@@ -160,9 +160,11 @@ def fetch_mining_data(header):
 def countdown_timer(seconds):
     while seconds >= 0:
         minutes, sec = divmod(seconds, 60)
-        log_message(f"Time Remaining: {minutes:02d}:{sec:02d}", Fore.YELLOW)
+        # Use carriage return to overwrite the line
+        print(f"\rTime Remaining: {minutes:02d}:{sec:02d}", end="")
         time.sleep(1)  # Wait for 1 second
         seconds -= 1
+    print()  # Move to the next line after the countdown is finished
 
 # Main function to perform the painting process
 def main(auth, account):
@@ -223,4 +225,3 @@ if __name__ == "__main__":
     # Infinite loop to process accounts
     while True:
         process_accounts(accounts)
-
