@@ -10,7 +10,6 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import urllib.parse  # For decoding the URL-encoded initData
 
-
 url = "https://notpx.app/api/v1"
 
 # ACTIVITY
@@ -159,6 +158,16 @@ def fetch_mining_data(header):
     except requests.exceptions.RequestException as e:
         log_message(f"Error fetching mining data: {e}", Fore.RED)
 
+# Function for countdown display
+def countdown(minutes):
+    total_seconds = minutes * 60
+    while total_seconds > 0:
+        mins, secs = divmod(total_seconds, 60)
+        timer = f"{mins:02d}:{secs:02d}"
+        log_message(f"Time remaining: {timer}", Fore.YELLOW)
+        time.sleep(1)  # Update every second
+        total_seconds -= 1
+
 # Main function to perform the painting process
 def main(auth, account):
     headers = {'authorization': auth}
@@ -220,14 +229,8 @@ def process_accounts(accounts):
     elapsed_minutes = time_elapsed.total_seconds() // 60  # Total elapsed time in minutes
     log_message(f"Elapsed Time: {int(elapsed_minutes)} minutes", Fore.YELLOW)
 
-    # Set the time to wait for 10 minutes
-    time_to_wait = timedelta(minutes=10) - time_elapsed
-
-    if time_to_wait.total_seconds() > 0:
-        log_message(f"SLEEPING FOR {int(time_to_wait.total_seconds() // 60)} MINUTES", Fore.YELLOW)
-        time.sleep(time_to_wait.total_seconds())
-    else:
-        log_message(f"NO SLEEP NEEDED, TOTAL PROCESSING TIME EXCEEDED 10 MINUTES", Fore.YELLOW)
+    # Start countdown for 10 minutes
+    countdown(10)
 
 if __name__ == "__main__":
     # Load accounts from the data.txt file
@@ -236,3 +239,4 @@ if __name__ == "__main__":
     # Infinite loop to process accounts
     while True:
         process_accounts(accounts)
+
