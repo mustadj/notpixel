@@ -158,15 +158,14 @@ def fetch_mining_data(header):
     except requests.exceptions.RequestException as e:
         log_message(f"Error fetching mining data: {e}", Fore.RED)
 
-# Function for countdown display
-def countdown(minutes):
-    total_seconds = minutes * 60
-    while total_seconds > 0:
-        mins, secs = divmod(total_seconds, 60)
-        timer = f"{mins:02d}:{secs:02d}"
-        log_message(f"Time remaining: {timer}", Fore.YELLOW)
+# Function to display elapsed time in the format HH:MM
+def display_elapsed_time(start_time):
+    while True:
+        elapsed_time = datetime.now() - start_time
+        elapsed_minutes = int(elapsed_time.total_seconds() // 60)  # Total elapsed time in minutes
+        elapsed_seconds = int(elapsed_time.total_seconds() % 60)  # Remainder seconds
+        log_message(f"Elapsed Time: {elapsed_minutes:02d}:{elapsed_seconds:02d}", Fore.YELLOW)
         time.sleep(1)  # Update every second
-        total_seconds -= 1
 
 # Main function to perform the painting process
 def main(auth, account):
@@ -218,19 +217,19 @@ def process_accounts(accounts):
     # Track the start time of the first account
     first_account_start_time = datetime.now()
 
+    # Start a separate thread to display elapsed time
+    import threading
+    elapsed_time_thread = threading.Thread(target=display_elapsed_time, args=(first_account_start_time,))
+    elapsed_time_thread.daemon = True  # Daemon thread will exit when the main program exits
+    elapsed_time_thread.start()
+
     for account in accounts:
         # Process each account one by one
         username = extract_username_from_initdata(account)
         log_message(f"--- STARTING SESSION FOR ACCOUNT: {username} ---", Fore.BLUE)
         main(account, account)
 
-    # Calculate the time elapsed since the first account started processing
-    time_elapsed = datetime.now() - first_account_start_time
-    elapsed_minutes = time_elapsed.total_seconds() // 60  # Total elapsed time in minutes
-    log_message(f"Elapsed Time: {int(elapsed_minutes)} minutes", Fore.YELLOW)
-
-    # Start countdown for 10 minutes
-    countdown(10)
+    # No need to sleep, the elapsed time will be displayed continuously
 
 if __name__ == "__main__":
     # Load accounts from the data.txt file
@@ -239,4 +238,5 @@ if __name__ == "__main__":
     # Infinite loop to process accounts
     while True:
         process_accounts(accounts)
+
 
