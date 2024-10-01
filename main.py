@@ -160,7 +160,6 @@ def fetch_mining_data(header):
 def countdown_timer(seconds):
     while seconds >= 0:
         minutes, sec = divmod(seconds, 60)
-        # Use carriage return to overwrite the line
         print(f"\rTime Remaining: {minutes:02d}:{sec:02d}", end="")
         time.sleep(1)  # Wait for 1 second
         seconds -= 1
@@ -212,16 +211,18 @@ def process_accounts(accounts):
     countdown_duration = 600  # Set the countdown duration to 10 minutes (600 seconds)
 
     countdown_thread = threading.Thread(target=countdown_timer, args=(countdown_duration,))
-    countdown_thread.daemon = True
-    countdown_thread.start()
+    countdown_thread.start()  # Start the countdown thread
 
     for account in accounts:
         username = extract_username_from_initdata(account)
         log_message(f"--- STARTING SESSION FOR ACCOUNT: {username} ---", Fore.BLUE)
         main(account, account)
 
+    countdown_thread.join()  # Wait for the countdown to finish
+
 if __name__ == "__main__":
     accounts = load_accounts_from_file('data.txt')
     # Infinite loop to process accounts
     while True:
         process_accounts(accounts)
+
