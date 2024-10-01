@@ -156,14 +156,13 @@ def fetch_mining_data(header):
     except requests.exceptions.RequestException as e:
         log_message(f"Error fetching mining data: {e}", Fore.RED)
 
-# Function to display elapsed time in the format HH:MM
-def display_elapsed_time(start_time):
-    while True:
-        elapsed_time = datetime.now() - start_time
-        elapsed_minutes = int(elapsed_time.total_seconds() // 60)
-        elapsed_seconds = int(elapsed_time.total_seconds() % 60)
-        log_message(f"Elapsed Time: {elapsed_minutes:02d}:{elapsed_seconds:02d}", Fore.YELLOW)
-        time.sleep(1)
+# Function to display countdown timer
+def countdown_timer(seconds):
+    while seconds >= 0:
+        minutes, sec = divmod(seconds, 60)
+        log_message(f"Time Remaining: {minutes:02d}:{sec:02d}", Fore.YELLOW)
+        time.sleep(1)  # Wait for 1 second
+        seconds -= 1
 
 # Main function to perform the painting process
 def main(auth, account):
@@ -179,7 +178,7 @@ def main(auth, account):
 
         for pos_image in order:
             x, y = get_pos(pos_image, len(image[0]))
-            time.sleep(0.05 + random.uniform(0.01, 0.1))  # Add randomness to the sleep
+            time.sleep(0.05 + random.uniform(0.01, 0.1))
 
             try:
                 color = get_color(get_canvas_pos(x, y), headers)
@@ -208,11 +207,11 @@ def main(auth, account):
 
 # Main process loop to manage accounts and sleep logic
 def process_accounts(accounts):
-    first_account_start_time = datetime.now()
+    countdown_duration = 600  # Set the countdown duration to 10 minutes (600 seconds)
 
-    elapsed_time_thread = threading.Thread(target=display_elapsed_time, args=(first_account_start_time,))
-    elapsed_time_thread.daemon = True
-    elapsed_time_thread.start()
+    countdown_thread = threading.Thread(target=countdown_timer, args=(countdown_duration,))
+    countdown_thread.daemon = True
+    countdown_thread.start()
 
     for account in accounts:
         username = extract_username_from_initdata(account)
@@ -220,7 +219,8 @@ def process_accounts(accounts):
         main(account, account)
 
 if __name__ == "__main__":
-    accounts = load_accounts_from_file('data.txt')  # Ensure the string is closed properly
+    accounts = load_accounts_from_file('data.txt')
     # Infinite loop to process accounts
     while True:
         process_accounts(accounts)
+
