@@ -48,7 +48,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=backoff_factor,
+        backoff_factor=0.3,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -79,12 +79,12 @@ def get_color(pixel, header):
         return "#000000"
 
 # Function to claim resources from the server
-def claim(header):
-    log_message("Claiming resources", Fore.CYAN)
+def claim(header, username):
+    log_message(f"Claiming resources for {username}", Fore.CYAN)
     try:
         session.get(f"{url}/mining/claim", headers=header, timeout=10)
     except requests.exceptions.RequestException as e:
-        log_message(f"Failed to claim resources: {e}", Fore.RED)
+        log_message(f"Failed to claim resources for {username}: {e}", Fore.RED)
 
 # Function to calculate pixel index based on x, y position
 def get_pixel(x, y):
@@ -103,7 +103,7 @@ start_x = 920
 start_y = 386
 
 # Function to perform the painting action
-def paint(canvas_pos, color, header):
+def paint(canvas_pos, color, header, username):
     data = {
         "pixelId": canvas_pos,
         "newColor": color
@@ -114,15 +114,15 @@ def paint(canvas_pos, color, header):
         x, y = get_pos(canvas_pos, 1000)
 
         if response.status_code == 400:
-            log_message("Out of energy", Fore.RED)
+            log_message(f"Out of energy for {username}", Fore.RED)
             return False
         if response.status_code == 401:
             return -1
 
-        log_message(f"Paint: {x},{y}", Fore.GREEN)
+        log_message(f"Paint: {x},{y} for {username}", Fore.GREEN)
         return True
     except requests.exceptions.RequestException as e:
-        log_message(f"Failed to paint: {e}", Fore.RED)
+        log_message(f"Failed to paint for {username}: {e}", Fore.RED)
         return False
 
 # Function to extract the username from the URL-encoded init data
@@ -146,38 +146,39 @@ def load_accounts_from_file(filename):
     return accounts
 
 # Function to fetch mining data (balance and other stats) with retry logic
-def fetch_mining_data(header, retries=3):
+def fetch_mining_data(header, username, retries=3):
     for attempt in range(retries):
         try:
             response = session.get(f"https://notpx.app/api/v1/mining/status", headers=header, timeout=10)
             if response.status_code == 200:
                 data = response.json()
                 user_balance = data.get('userBalance', 'Unknown')
-                log_message(f"Balance: {user_balance}", Fore.MAGENTA)
+                log_message(f"Balance for {username}: {user_balance}", Fore.MAGENTA)
                 return True
             elif response.status_code == 401:
-                log_message(f"Failed to fetch mining data: 401 Unauthorized", Fore.RED)
+                log_message(f"Failed to fetch mining data for {username}: 401 Unauthorized", Fore.RED)
                 return False
             else:
-                log_message(f"Failed to fetch mining data: {response.status_code}", Fore.RED)
+                log_message(f"Failed to fetch mining data for {username}: {response.status_code}", Fore.RED)
         except requests.exceptions.RequestException as e:
-            log_message(f"Error fetching mining data: {e}", Fore.RED)
+            log_message(f"Error fetching mining data for {username}: {e}", Fore.RED)
         time.sleep(1)  # Wait a bit before retrying
     return False
 
 # Main function to perform the painting process
 def main(auth, account):
     headers = {'authorization': auth}
+    username = extract_username_from_initdata(account)
 
     try:
         # Fetch mining data (balance) before claiming resources
-        if not fetch_mining_data(headers):
-            log_message("DEAD :(", Fore.RED)
+        if not fetch_mining_data(headers, username):
+            log_message(f"{username} is DEAD :(", Fore.RED)
             print(headers["authorization"])
             return
 
         # Claim resources
-        claim(headers)
+        claim(headers, username)
 
         size = len(image) * len(image[0])
         order = [i for i in range(size)]
@@ -189,17 +190,17 @@ def main(auth, account):
             try:
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
-                    log_message("DEAD :(", Fore.RED)
+                    log_message(f"{username} is DEAD :(", Fore.RED)
                     print(headers["authorization"])
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
-                    log_message(f"Skip: {start_x + x - 1},{start_y + y - 1}", Fore.RED)
+                    log_message(f"Skip: {start_x + x - 1},{start_y + y - 1} for {username}", Fore.RED)
                     continue
 
-                result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
+                result = paint(get_canvas_pos(x, y), c[image[y][x]], headers, username)
                 if result == -1:
-                    log_message("DEAD :(", Fore.RED)
+                    log_message(f"{username} is DEAD :(", Fore.RED)
                     print(headers["authorization"])
                     break
                 elif result:
@@ -208,10 +209,10 @@ def main(auth, account):
                     break
 
             except IndexError:
-                log_message(f"IndexError at pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
+                log_message(f"IndexError at pos_image: {pos_image}, y: {y}, x: {x} for {username}", Fore.RED)
 
     except requests.exceptions.RequestException as e:
-        log_message(f"Network error in account {account}: {e}", Fore.RED)
+        log_message(f"Network error in account {username}: {e}", Fore.RED)
 
 # Main process loop to manage accounts and sleep logic
 def process_accounts(accounts):
@@ -221,12 +222,12 @@ def process_accounts(accounts):
     for account in accounts:
         # Process each account one by one
         username = extract_username_from_initdata(account)
-        log_message(f" AKUN BERJALAN ", Fore.BLUE)
+        log_message(f"--- STARTING SESSION FOR ACCOUNT ---", Fore.BLUE)
         main(account, account)
 
     # Calculate the time elapsed since the first account started processing
     time_elapsed = datetime.now() - first_account_start_time
-    time_to_wait = timedelta(minutes=35) - time_elapsed
+    time_to_wait = timedelta(minutes=35) - time_elapsed  # Changed to 35 minutes
 
     if time_to_wait.total_seconds() > 0:
         countdown_timer(time_to_wait.total_seconds())
@@ -247,4 +248,4 @@ accounts = load_accounts_from_file("data.txt")
 
 # Continuously process accounts in a loop
 while True:
-    process_accounts(accounts)
+
