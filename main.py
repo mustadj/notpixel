@@ -145,18 +145,25 @@ def load_accounts_from_file(filename):
         accounts = [f"initData {line.strip()}" for line in file if line.strip()]
     return accounts
 
-# Function to fetch mining data (balance and other stats)
-def fetch_mining_data(header):
-    try:
-        response = session.get(f"https://notpx.app/api/v1/mining/status", headers=header, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            user_balance = data.get('userBalance', 'Unknown')
-            log_message(f"Balance: {user_balance}", Fore.MAGENTA)
-        else:
-            log_message(f"Failed to fetch mining data: {response.status_code}", Fore.RED)
-    except requests.exceptions.RequestException as e:
-        log_message(f"Error fetching mining data: {e}", Fore.RED)
+# Function to fetch mining data (balance and other stats) with retry logic
+def fetch_mining_data(header, retries=3):
+    for attempt in range(retries):
+        try:
+            response = session.get(f"https://notpx.app/api/v1/mining/status", headers=header, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                user_balance = data.get('userBalance', 'Unknown')
+                log_message(f"Balance: {user_balance}", Fore.MAGENTA)
+                return True
+            elif response.status_code == 401:
+                log_message(f"Failed to fetch mining data: 401 Unauthorized", Fore.RED)
+                return False
+            else:
+                log_message(f"Failed to fetch mining data: {response.status_code}", Fore.RED)
+        except requests.exceptions.RequestException as e:
+            log_message(f"Error fetching mining data: {e}", Fore.RED)
+        time.sleep(1)  # Wait a bit before retrying
+    return False
 
 # Main function to perform the painting process
 def main(auth, account):
@@ -164,8 +171,11 @@ def main(auth, account):
 
     try:
         # Fetch mining data (balance) before claiming resources
-        fetch_mining_data(headers)
-        
+        if not fetch_mining_data(headers):
+            log_message("DEAD :(", Fore.RED)
+            print(headers["authorization"])
+            return
+
         # Claim resources
         claim(headers)
 
@@ -222,25 +232,24 @@ def process_accounts(accounts):
         log_message(f"SLEEPING FOR {int(time_to_wait.total_seconds() // 60)} MINUTES", Fore.YELLOW)
         countdown_timer(time_to_wait.total_seconds())
     else:
-        log_message(f"NO SLEEP NEEDED, TOTAL PROCESSING TIME EXCEEDED 10 MINUTES", Fore.YELLOW)
+        log_message(f"NO SLEEP NEEDED, TOTAL PROCESSING TIME: {time_elapsed}", Fore.GREEN)
 
 # Function to display a countdown timer
-def countdown_timer(seconds):
-    while seconds > 0:
-        mins, secs = divmod(seconds, 60)
+def countdown_timer(duration):
+    while duration > 0:
+        mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
-        print(f"\r{Fore.CYAN}Countdown Timer: {timer}{Style.RESET_ALL}", end="")
+        print(f'Countdown Timer: {timer}', end="\r")
         time.sleep(1)
-        seconds -= 1
-    print()  # Newline after countdown completes
+        duration -= 1
 
-if __name__ == "__main__":
-    # Load accounts from the data.txt file
-    accounts = load_accounts_from_file('data.txt')
+# Load the accounts from data.txt
+accounts = load_accounts_from_file("data.txt")
 
-    # Infinite loop to process accounts
-    while True:
-        process_accounts(accounts)
+# Continuously process accounts in a loop
+while True:
+    process_accounts(accounts)
+
 
 
 
