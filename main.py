@@ -229,7 +229,6 @@ def process_accounts(accounts):
     time_to_wait = timedelta(minutes=10) - time_elapsed
 
     if time_to_wait.total_seconds() > 0:
-        log_message(f"SLEEPING FOR {int(time_to_wait.total_seconds() // 60)} MINUTES", Fore.YELLOW)
         countdown_timer(time_to_wait.total_seconds())
     else:
         log_message(f"NO SLEEP NEEDED, TOTAL PROCESSING TIME: {time_elapsed}", Fore.GREEN)
@@ -249,8 +248,3 @@ accounts = load_accounts_from_file("data.txt")
 # Continuously process accounts in a loop
 while True:
     process_accounts(accounts)
-
-
-
-
-
