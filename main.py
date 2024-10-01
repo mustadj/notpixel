@@ -5,16 +5,16 @@ import random
 from setproctitle import setproctitle
 from convert import get
 from colorama import Fore, Style, init
-from datetime import datetime
+from datetime import datetime, timedelta
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import urllib.parse  # For decoding the URL-encoded initData
-import threading
+
 
 url = "https://notpx.app/api/v1"
 
 # ACTIVITY
-WAIT = 540  # This is set to 540 seconds
+WAIT = 180 * 3
 DELAY = 1
 
 # IMAGE
@@ -120,7 +120,7 @@ def paint(canvas_pos, color, header):
         if response.status_code == 401:
             return -1
 
-        log_message(f"Painted: {x},{y} with color {color}", Fore.GREEN)
+        log_message(f"Paint: {x},{y}", Fore.GREEN)
         return True
     except requests.exceptions.RequestException as e:
         log_message(f"Failed to paint: {e}", Fore.RED)
@@ -128,7 +128,10 @@ def paint(canvas_pos, color, header):
 
 # Function to extract the username from the URL-encoded init data
 def extract_username_from_initdata(init_data):
+    # URL decode the init data
     decoded_data = urllib.parse.unquote(init_data)
+    
+    # Find the part that contains "username"
     username_start = decoded_data.find('"username":"') + len('"username":"')
     username_end = decoded_data.find('"', username_start)
     
@@ -146,7 +149,7 @@ def load_accounts_from_file(filename):
 # Function to fetch mining data (balance and other stats)
 def fetch_mining_data(header):
     try:
-        response = session.get(f"{url}/mining/status", headers=header, timeout=10)
+        response = session.get(f"https://notpx.app/api/v1/mining/status", headers=header, timeout=10)
         if response.status_code == 200:
             data = response.json()
             user_balance = data.get('userBalance', 'Unknown')
@@ -156,21 +159,15 @@ def fetch_mining_data(header):
     except requests.exceptions.RequestException as e:
         log_message(f"Error fetching mining data: {e}", Fore.RED)
 
-# Function to display countdown timer
-def countdown_timer(seconds):
-    while seconds >= 0:
-        minutes, sec = divmod(seconds, 60)
-        print(f"\rTime Remaining: {minutes:02d}:{sec:02d}", end="")
-        time.sleep(1)  # Wait for 1 second
-        seconds -= 1
-    print()  # Move to the next line after the countdown is finished
-
 # Main function to perform the painting process
 def main(auth, account):
     headers = {'authorization': auth}
 
     try:
+        # Fetch mining data (balance) before claiming resources
         fetch_mining_data(headers)
+        
+        # Claim resources
         claim(headers)
 
         size = len(image) * len(image[0])
@@ -180,24 +177,25 @@ def main(auth, account):
         for pos_image in order:
             x, y = get_pos(pos_image, len(image[0]))
             time.sleep(0.05 + random.uniform(0.01, 0.1))
-
             try:
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
-                    log_message("Session expired or DEAD :(", Fore.RED)
+                    log_message("DEAD :(", Fore.RED)
                     print(headers["authorization"])
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
-                    log_message(f"Skip: {start_x + x - 1},{start_y + y - 1} (Already painted or empty)", Fore.RED)
+                    log_message(f"Skip: {start_x + x - 1},{start_y + y - 1}", Fore.RED)
                     continue
 
                 result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                 if result == -1:
-                    log_message("Session expired or DEAD :(", Fore.RED)
+                    log_message("DEAD :(", Fore.RED)
                     print(headers["authorization"])
                     break
-                elif not result:
+                elif result:
+                    continue
+                else:
                     break
 
             except IndexError:
@@ -208,21 +206,41 @@ def main(auth, account):
 
 # Main process loop to manage accounts and sleep logic
 def process_accounts(accounts):
-    countdown_duration = 600  # Set the countdown duration to 10 minutes (600 seconds)
-
-    countdown_thread = threading.Thread(target=countdown_timer, args=(countdown_duration,))
-    countdown_thread.start()  # Start the countdown thread
+    # Track the start time of the first account
+    first_account_start_time = datetime.now()
 
     for account in accounts:
+        # Process each account one by one
         username = extract_username_from_initdata(account)
         log_message(f"--- STARTING SESSION FOR ACCOUNT: {username} ---", Fore.BLUE)
         main(account, account)
 
-    countdown_thread.join()  # Wait for the countdown to finish
+    # Calculate the time elapsed since the first account started processing
+    time_elapsed = datetime.now() - first_account_start_time
+    time_to_wait = timedelta(minutes=10) - time_elapsed
+
+    if time_to_wait.total_seconds() > 0:
+        log_message(f"SLEEPING FOR {int(time_to_wait.total_seconds() // 60)} MINUTES", Fore.YELLOW)
+        countdown_timer(time_to_wait.total_seconds())
+    else:
+        log_message(f"NO SLEEP NEEDED, TOTAL PROCESSING TIME EXCEEDED 10 MINUTES", Fore.YELLOW)
+
+# Function to display a countdown timer
+def countdown_timer(seconds):
+    while seconds > 0:
+        mins, secs = divmod(seconds, 60)
+        timer = f'{int(mins):02}:{int(secs):02}'
+        print(f"\r{Fore.CYAN}Countdown Timer: {timer}{Style.RESET_ALL}", end="")
+        time.sleep(1)
+        seconds -= 1
+    print()  # Newline after countdown completes
 
 if __name__ == "__main__":
+    # Load accounts from the data.txt file
     accounts = load_accounts_from_file('data.txt')
+
     # Infinite loop to process accounts
     while True:
         process_accounts(accounts)
+
 
