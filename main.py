@@ -248,3 +248,5 @@ accounts = load_accounts_from_file("data.txt")
 
 # Continuously process accounts in a loop
 while True:
+    process_accounts(accounts)
+
