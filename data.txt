@@ -1,4 +1,2 @@
-Quer_id=
-Quer_id=
-user=
-user=
+masukin qury id lu disni
+kalo mau lebih dari 1 akun pake proxy dan querynya ditaro bejejer kebawah
