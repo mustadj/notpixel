@@ -10,7 +10,6 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import urllib.parse  # For decoding the URL-encoded initData
 
-
 url = "https://notpx.app/api/v1"
 
 # ACTIVITY
@@ -242,6 +241,7 @@ if __name__ == "__main__":
     # Infinite loop to process accounts
     while True:
         process_accounts(accounts)
+
 
 
 
