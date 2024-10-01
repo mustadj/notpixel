@@ -5,7 +5,7 @@ import random
 from setproctitle import setproctitle
 from convert import get
 from colorama import Fore, Style, init
-from datetime import datetime, timedelta
+from datetime import datetime
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import urllib.parse  # For decoding the URL-encoded initData
@@ -220,4 +220,7 @@ def process_accounts(accounts):
         main(account, account)
 
 if __name__ == "__main__":
-    accounts = load_accounts_from_file('data
+    accounts = load_accounts_from_file('data.txt')  # Ensure the string is closed properly
+    # Infinite loop to process accounts
+    while True:
+        process_accounts(accounts)
