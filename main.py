@@ -226,7 +226,7 @@ def process_accounts(accounts):
 
     # Calculate the time elapsed since the first account started processing
     time_elapsed = datetime.now() - first_account_start_time
-    time_to_wait = timedelta(minutes=10) - time_elapsed
+    time_to_wait = timedelta(minutes=35) - time_elapsed
 
     if time_to_wait.total_seconds() > 0:
         countdown_timer(time_to_wait.total_seconds())
