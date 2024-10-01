@@ -9,11 +9,12 @@ from datetime import datetime, timedelta
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import urllib.parse  # For decoding the URL-encoded initData
+import threading
 
 url = "https://notpx.app/api/v1"
 
 # ACTIVITY
-WAIT = 180 * 3  # This is set to 540 seconds
+WAIT = 540  # This is set to 540 seconds
 DELAY = 1
 
 # IMAGE
@@ -119,7 +120,7 @@ def paint(canvas_pos, color, header):
         if response.status_code == 401:
             return -1
 
-        log_message(f"Paint: {x},{y}", Fore.GREEN)
+        log_message(f"Painted: {x},{y} with color {color}", Fore.GREEN)
         return True
     except requests.exceptions.RequestException as e:
         log_message(f"Failed to paint: {e}", Fore.RED)
@@ -127,10 +128,7 @@ def paint(canvas_pos, color, header):
 
 # Function to extract the username from the URL-encoded init data
 def extract_username_from_initdata(init_data):
-    # URL decode the init data
     decoded_data = urllib.parse.unquote(init_data)
-    
-    # Find the part that contains "username"
     username_start = decoded_data.find('"username":"') + len('"username":"')
     username_end = decoded_data.find('"', username_start)
     
@@ -148,7 +146,7 @@ def load_accounts_from_file(filename):
 # Function to fetch mining data (balance and other stats)
 def fetch_mining_data(header):
     try:
-        response = session.get(f"https://notpx.app/api/v1/mining/status", headers=header, timeout=10)
+        response = session.get(f"{url}/mining/status", headers=header, timeout=10)
         if response.status_code == 200:
             data = response.json()
             user_balance = data.get('userBalance', 'Unknown')
@@ -162,20 +160,17 @@ def fetch_mining_data(header):
 def display_elapsed_time(start_time):
     while True:
         elapsed_time = datetime.now() - start_time
-        elapsed_minutes = int(elapsed_time.total_seconds() // 60)  # Total elapsed time in minutes
-        elapsed_seconds = int(elapsed_time.total_seconds() % 60)  # Remainder seconds
+        elapsed_minutes = int(elapsed_time.total_seconds() // 60)
+        elapsed_seconds = int(elapsed_time.total_seconds() % 60)
         log_message(f"Elapsed Time: {elapsed_minutes:02d}:{elapsed_seconds:02d}", Fore.YELLOW)
-        time.sleep(1)  # Update every second
+        time.sleep(1)
 
 # Main function to perform the painting process
 def main(auth, account):
     headers = {'authorization': auth}
 
     try:
-        # Fetch mining data (balance) before claiming resources
         fetch_mining_data(headers)
-        
-        # Claim resources
         claim(headers)
 
         size = len(image) * len(image[0])
@@ -184,26 +179,25 @@ def main(auth, account):
 
         for pos_image in order:
             x, y = get_pos(pos_image, len(image[0]))
-            time.sleep(0.05 + random.uniform(0.01, 0.1))
+            time.sleep(0.05 + random.uniform(0.01, 0.1))  # Add randomness to the sleep
+
             try:
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
-                    log_message("DEAD :(", Fore.RED)
+                    log_message("Session expired or DEAD :(", Fore.RED)
                     print(headers["authorization"])
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
-                    log_message(f"Skip: {start_x + x - 1},{start_y + y - 1}", Fore.RED)
+                    log_message(f"Skip: {start_x + x - 1},{start_y + y - 1} (Already painted or empty)", Fore.RED)
                     continue
 
                 result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                 if result == -1:
-                    log_message("DEAD :(", Fore.RED)
+                    log_message("Session expired or DEAD :(", Fore.RED)
                     print(headers["authorization"])
                     break
-                elif result:
-                    continue
-                else:
+                elif not result:
                     break
 
             except IndexError:
@@ -214,29 +208,16 @@ def main(auth, account):
 
 # Main process loop to manage accounts and sleep logic
 def process_accounts(accounts):
-    # Track the start time of the first account
     first_account_start_time = datetime.now()
 
-    # Start a separate thread to display elapsed time
-    import threading
     elapsed_time_thread = threading.Thread(target=display_elapsed_time, args=(first_account_start_time,))
-    elapsed_time_thread.daemon = True  # Daemon thread will exit when the main program exits
+    elapsed_time_thread.daemon = True
     elapsed_time_thread.start()
 
     for account in accounts:
-        # Process each account one by one
         username = extract_username_from_initdata(account)
         log_message(f"--- STARTING SESSION FOR ACCOUNT: {username} ---", Fore.BLUE)
         main(account, account)
 
-    # No need to sleep, the elapsed time will be displayed continuously
-
 if __name__ == "__main__":
-    # Load accounts from the data.txt file
-    accounts = load_accounts_from_file('data.txt')
-
-    # Infinite loop to process accounts
-    while True:
-        process_accounts(accounts)
-
-
+    accounts = load_accounts_from_file('data
