@@ -1,1 +1,3 @@
-
+- git clone https://github.com/mustadj/notpixel
+- cd notpixel
+- python main.py
