@@ -221,7 +221,7 @@ def process_accounts(accounts):
     for account in accounts:
         # Process each account one by one
         username = extract_username_from_initdata(account)
-        log_message(f"--- STARTING SESSION FOR ACCOUNT ---", Fore.BLUE)
+        log_message(f" AKUN BERJALAN ", Fore.BLUE)
         main(account, account)
 
     # Calculate the time elapsed since the first account started processing
