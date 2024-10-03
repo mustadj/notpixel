@@ -199,6 +199,15 @@ def main(auth, account):
     except requests.exceptions.RequestException as e:
         log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
+# Fungsi untuk menampilkan timer mundur
+def countdown_timer(duration):
+    while duration > 0:
+        mins, secs = divmod(duration, 60)
+        timer = f'{int(mins):02}:{int(secs):02}'
+        print(f'Timer Mundur: {timer}', end="\r")
+        time.sleep(1)
+        duration -= 1
+
 # Fungsi untuk memproses semua akun dan logika tidur
 def process_accounts(accounts):
     for account in accounts:
@@ -208,7 +217,7 @@ def process_accounts(accounts):
 
     # Tunggu 5 menit sebelum memulai ulang sesi
     log_message("Menunggu 5 menit sebelum memulai sesi ulang...", Fore.YELLOW)
-    time.sleep(5 * 60)
+    countdown_timer(5 * 60)
 
 # Muat akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
