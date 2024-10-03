@@ -240,7 +240,7 @@ def countdown_timer(duration):
         print(f'\rTimer Mundur: {timer}', end='', flush=True)
 
         # Menggunakan escape sequence untuk memindahkan kursor ke kanan setelah detik
-        print(f'\033[{len(timer) + 13}C', end='', flush=True)
+        print(f'\033[{len(timer) + 9}C', end='', flush=True)
 
         time.sleep(1)
         duration -= 1
