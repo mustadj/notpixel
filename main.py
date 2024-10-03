@@ -120,12 +120,6 @@ def paint(canvas_pos, color, header):
         log_message(f"Gagal melukis: {e}", Fore.RED)
         return False
 
-# Fungsi untuk memuat akun dari data.txt
-def load_accounts_from_file(filename):
-    with open(filename, 'r') as file:
-        accounts = [f"initData {line.strip()}" for line in file if line.strip()]
-    return accounts
-
 # Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
 def fetch_mining_data(header, retries=3):
     for attempt in range(retries):
@@ -219,29 +213,12 @@ def main(auth, account):
     except requests.exceptions.RequestException as e:
         log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
-# Fungsi untuk menampilkan timer mundur
-def countdown_timer(duration):
-    while duration > 0:
-        mins, secs = divmod(duration, 60)
-        timer = f'{int(mins):02}:{int(secs):02}'
-        print(f'Timer Mundur: {timer}', end="\r")
-        time.sleep(1)
-        duration -= 1
-
-# Fungsi untuk memproses semua akun dan logika tidur
-def process_accounts(accounts):
-    for account in accounts:
-        # Proses setiap akun satu per satu
-        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
-        main(account, account)
-
-    # Tunggu 5 menit sebelum memulai ulang sesi
-    log_message("Menunggu 10 menit sebelum memulai sesi ulang...", Fore.WHITE)
-    countdown_timer(10 * 60)
-
 # Muat akun dari data.txt
-akun_list = load_accounts_from_file("data.txt")
+with open('data.txt', 'r') as file:
+    account = file.readline().strip()
 
-# Loop terus menerus untuk memproses akun
-while True:
-    process_accounts(akun_list)
+# Token authorization (harus diganti dengan token yang benar)
+auth = "Bearer <YOUR_AUTH_TOKEN>"
+
+# Jalankan bot untuk satu akun
+main(auth, account)
