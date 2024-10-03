@@ -11,6 +11,15 @@ from requests.packages.urllib3.util.retry import Retry
 
 url = "https://notpx.app/api/v1"
 
+# WAKTU TUNGGU
+WAIT = 180 * 3
+DELAY = 1
+
+# DIMENSI GAMBAR
+WIDTH = 1000
+HEIGHT = 1000
+MAX_HEIGHT = 50
+
 # Inisialisasi colorama untuk output berwarna
 init(autoreset=True)
 
@@ -111,6 +120,12 @@ def paint(canvas_pos, color, header):
         log_message(f"Gagal melukis: {e}", Fore.RED)
         return False
 
+# Fungsi untuk memuat akun dari data.txt
+def load_accounts_from_file(filename):
+    with open(filename, 'r') as file:
+        accounts = [f"initData {line.strip()}" for line in file if line.strip()]
+    return accounts
+
 # Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
 def fetch_mining_data(header, retries=3):
     for attempt in range(retries):
@@ -122,7 +137,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f"Token tidak valid, mencoba mendapatkan token baru...", Fore.RED)
+                log_message(f" Userid dari data.txt : 401 Unauthorized", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -149,17 +164,18 @@ def request_new_token(account):
 
 # Fungsi utama untuk melakukan proses melukis
 def main(auth, account):
-    headers = {'authorization': f"Bearer {auth}"}  # Tambahkan 'Bearer' secara otomatis
+    headers = {'authorization': auth}
 
     log_message("Auto painting started.", Fore.WHITE)
 
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
         if not fetch_mining_data(headers):
-            log_message("Token Dari data.txt Expired, mencoba memperbarui token...", Fore.RED)
-            new_token = request_new_token(account)  # Mendapatkan token baru
-            if new_token:
-                headers['authorization'] = f"Bearer {new_token}"  # Perbarui header dengan token baru
+            log_message("Token Dari data .txt Expired :(", Fore.RED)
+            # Mendapatkan token baru
+            new_auth = request_new_token(account)  # Mendapatkan token baru
+            if new_auth:
+                headers['authorization'] = new_auth  # Perbarui header dengan token baru
                 log_message("Token diperbarui.", Fore.GREEN)
             else:
                 log_message("Gagal mendapatkan token baru.", Fore.RED)
@@ -179,7 +195,8 @@ def main(auth, account):
             try:
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
-                    log_message("Token tidak valid, berhenti melukis.", Fore.RED)
+                    log_message("Expired Bang", Fore.RED)
+                    print(headers["authorization"])
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -188,6 +205,7 @@ def main(auth, account):
                 result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                 if result == -1:
                     log_message("Token Expired :(", Fore.RED)
+                    print(headers["authorization"])
                     break
                 elif not result:
                     break
@@ -201,10 +219,29 @@ def main(auth, account):
     except requests.exceptions.RequestException as e:
         log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
-# Muat token dari file data.txt
-with open('data.txt', 'r') as file:
-    auth_token = file.readline().strip()
-    account = file.readline().strip()  # Asumsikan akun juga ada di baris kedua di file yang sama
+# Fungsi untuk menampilkan timer mundur
+def countdown_timer(duration):
+    while duration > 0:
+        mins, secs = divmod(duration, 60)
+        timer = f'{int(mins):02}:{int(secs):02}'
+        print(f'Timer Mundur: {timer}', end="\r")
+        time.sleep(1)
+        duration -= 1
 
-# Jalankan bot untuk satu akun
-main(auth_token, account)
+# Fungsi untuk memproses semua akun dan logika tidur
+def process_accounts(accounts):
+    for account in accounts:
+        # Proses setiap akun satu per satu
+        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
+        main(account, account)
+
+    # Tunggu 5 menit sebelum memulai ulang sesi
+    log_message("Menunggu 10 menit sebelum memulai sesi ulang...", Fore.WHITE)
+    countdown_timer(10 * 60)
+
+# Muat akun dari data.txt
+akun_list = load_accounts_from_file("data.txt")
+
+# Loop terus menerus untuk memproses akun
+while True:
+    process_accounts(akun_list)
