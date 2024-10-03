@@ -79,7 +79,9 @@ def get_color(pixel, header):
 def claim(header):
     log_message("Auto claiming started.", Fore.WHITE)
     try:
-        session.get(f"{url}/mining/claim", headers=header, timeout=10)
+        response = session.get(f"{url}/mining/claim", headers=header, timeout=10)
+        if response.status_code == 401:
+            return -1
     except requests.exceptions.RequestException as e:
         log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
 
@@ -225,15 +227,93 @@ def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
+        print(f'TimerThe script appears to be functioning in part but is having issues with token expiration and resource availability. Based on the most recent execution where the script started the auto painting but encountered the message "Painter: No charge available," I suggest the following modifications:
+
+### Possible Issues:
+1. **Resource Unavailability**: The message "No charge available" indicates that there are no resources left to paint pixels. This might happen due to server-side limitations or account restrictions.
+2. **Token Expiration**: If the token is expiring quickly, make sure that you're refreshing the token properly when it becomes invalid.
+3. **Handling Charge Waiting Period**: The script currently handles waiting for resource availability by sleeping for 10 minutes, but this should be checked before each paint operation to avoid unnecessary retries.
+
+### Suggested Modifications:
+
+1. **Improve Error Handling**: Implement retry logic or an efficient sleep mechanism when the server responds with no available charges.
+2. **Token Refresh Logic**: Make sure the token refresh logic works correctly to request and assign a new token before the current one expires.
+
+Here is the corrected section of the code:
+
+```python
+# Fungsi utama untuk melakukan proses melukis
+def main(auth, account):
+    headers = {'authorization': auth}
+
+    log_message("Auto painting started.", Fore.WHITE)
+
+    try:
+        # Ambil data mining (saldo) sebelum mengklaim sumber daya
+        if not fetch_mining_data(headers):
+            log_message("Token Dari data.txt Expired :(", Fore.RED)
+            # Mendapatkan token baru
+            new_auth = request_new_token(account)  # Mendapatkan token baru
+            if new_auth:
+                headers['authorization'] = new_auth  # Perbarui header dengan token baru
+                log_message("Token diperbarui.", Fore.GREEN)
+            else:
+                log_message("Gagal mendapatkan token baru.", Fore.RED)
+                return
+
+        # Klaim sumber daya
+        while True:
+            claim_status = claim(headers)
+            if claim_status == -1:
+                log_message("Token Expired, requesting a new token...", Fore.RED)
+                new_auth = request_new_token(account)
+                if new_auth:
+                    headers['authorization'] = new_auth  # Update token
+                    log_message("Token diperbarui.", Fore.GREEN)
+                else:
+                    log_message("Gagal mendapatkan token baru.", Fore.RED)
+                    return
+
+            size = len(image) * len(image[0])
+            order = [i for i in range(size)]
+            random.shuffle(order)
+
+            for pos_image in order:
+                x, y = get_pos(pos_image, len(image[0]))
+                time.sleep(random.uniform(0.05, 0.2))  # Jeda acak di antara permintaan
+
+                try:
+                    color = get_color(get_canvas_pos(x, y), headers)
+                    if color == -1:
+                        log_message("Expired Bang", Fore.RED)
+                        print(headers["authorization"])
+                        break
+
+                    if image[y][x] == ' ' or color == c[image[y][x]]:
+                        continue
+
+                    result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
+                    if result == -1:
+                        log_message("Token Expired :(", Fore.RED)
+                        print(headers["authorization"])
+                        break
+                    elif not result:
+                        break
+
+                    # Simulasi pergerakan mouse dengan jeda acak
+                    time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
+
+                except IndexError:
+                    log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
+
+    except requests.exceptions.RequestException as e:
+        log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
+
+# Fungsi untuk menampilkan timer mundur
+def countdown_timer(duration):
+    while duration > 0:
+        mins, secs = divmod(duration, 60)
+        timer = f'{int(mins):02}:{int(secs):02}'
         print(f'Timer Mundur: {timer}', end="\r")
         time.sleep(1)
         duration -= 1
-
-# Muat satu akun dari data.txt
-akun_list = load_accounts_from_file("data.txt")
-
-# Panggil main hanya dengan satu akun
-if akun_list:
-    main(akun_list[0], akun_list[0])  # Memproses satu akun
-else:
-    log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
