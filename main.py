@@ -165,7 +165,7 @@ def main(auth):
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
         if not fetch_mining_data(headers):
-            log_message("Token Dari data .txt Expired :(", Fore.RED)
+            log_message("Token Dari data.txt Expired :(", Fore.RED)
             return
 
         # Klaim sumber daya
