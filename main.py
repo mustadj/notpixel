@@ -46,7 +46,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=0.3,
+        backoff_factor=backoff_factor,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -121,11 +121,11 @@ def paint(canvas_pos, color, header):
         log_message(f"Gagal melukis: {e}", Fore.RED)
         return False
 
-# Fungsi untuk memuat akun dari data.txt
-def load_accounts_from_file(filename):
+# Fungsi untuk memuat UserID dari data.txt
+def load_userid_from_file(filename):
     with open(filename, 'r') as file:
-        accounts = [line.strip() for line in file if line.strip()]
-    return accounts
+        account = file.readline().strip()  # Ambil UserID dari baris pertama
+    return account
 
 # Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
 def fetch_mining_data(header, retries=3):
@@ -138,7 +138,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f"Userid dari data.txt : 401 Unauthorized", Fore.RED)
+                log_message(f"Token Kadaluarsa, perlu memperbarui.", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -149,7 +149,7 @@ def fetch_mining_data(header, retries=3):
 
 # Fungsi untuk mendapatkan token baru menggunakan UserID dari data.txt
 def request_new_token(userid):
-    log_message("Meminta token baru...", Fore.YELLOW)
+    log_message(f"Meminta token baru untuk UserID: {userid}...", Fore.YELLOW)
     try:
         # Kirim UserID ke endpoint login untuk mendapatkan token baru
         response = session.post(f"{url}/login", data={"account": userid}, timeout=10)
@@ -237,10 +237,10 @@ def countdown_timer(duration):
         duration -= 1
 
 # Muat satu UserID dari data.txt
-akun_list = load_accounts_from_file("data.txt")
+userid = load_userid_from_file("data.txt")
 
-# Panggil main hanya dengan satu UserID dari data.txt
-if akun_list:
-    main(akun_list[0])  # Memproses akun pertama dari data.txt
+# Panggil main dengan UserID dari data.txt
+if userid:
+    main(userid)  # Memproses akun berdasarkan UserID dari data.txt
 else:
-    log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
+    log_message("Tidak ada UserID yang ditemukan di data.txt", Fore.RED)
