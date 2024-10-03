@@ -133,10 +133,11 @@ def load_token_from_file(filename):
 
 # Fungsi untuk memperbarui token jika expired
 def refresh_token():
-    # Proses yang Anda lakukan untuk mendapatkan token baru
     log_message("Meminta token baru...", Fore.YELLOW)
-    # Ganti ini dengan permintaan yang sesuai untuk mendapatkan token baru
-    new_token = "NEW_TOKEN_HERE"  
+    # Implementasikan logika yang benar di sini untuk mendapatkan token baru
+    # Hapus 'NEW_TOKEN_HERE' dan gunakan cara yang benar untuk mengambil token baru.
+    
+    new_token = "NEW_TOKEN_HERE"  # Ganti dengan logika yang benar untuk mendapatkan token baru
     if new_token:
         with open("data.txt", 'w') as file:
             file.write(new_token)  # Simpan token baru ke file
