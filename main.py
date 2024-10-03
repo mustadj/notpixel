@@ -217,8 +217,5 @@ def main(auth, account):
 with open('data.txt', 'r') as file:
     account = file.readline().strip()
 
-# Token authorization (harus diganti dengan token yang benar)
-auth = "Bearer <YOUR_AUTH_TOKEN>"
-
 # Jalankan bot untuk satu akun
 main(auth, account)
