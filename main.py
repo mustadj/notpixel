@@ -204,7 +204,7 @@ def main(auth, account):
 
                 result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                 if result == -1:
-                    log_message("DEAD :(", Fore.RED)
+                    log_message("Token Expired :(", Fore.RED)
                     print(headers["authorization"])
                     break
                 elif not result:
