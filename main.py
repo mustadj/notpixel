@@ -75,11 +75,31 @@ def get_color(pixel, header):
         log_message(f"Permintaan gagal: {e}", Fore.RED)
         return "#000000"
 
-# Fungsi untuk mengklaim sumber daya dari server
-def claim(header):
-    log_message("Auto claiming started.", Fore.WHITE)
+# Fungsi untuk mengklaim sumber daya dari server, mengirim token di body
+def claim_body(header):
+    log_message("Auto claiming started (Body Method).", Fore.WHITE)
     try:
-        session.get(f"{url}/mining/claim", headers=header, timeout=10)
+        data = {
+            "token": header['tga-auth-token']  # Kirim token di dalam body
+        }
+        response = session.post(f"{url}/mining/claim", json=data, headers={'Content-Type': 'application/json'}, timeout=10)
+        if response.status_code == 200:
+            log_message("Claim berhasil.", Fore.LIGHTGREEN_EX)
+        else:
+            log_message(f"Claim gagal dengan status: {response.status_code}", Fore.RED)
+    except requests.exceptions.RequestException as e:
+        log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
+
+# Fungsi untuk mengklaim sumber daya dari server, mengirim token sebagai parameter URL
+def claim_query_param(header):
+    log_message("Auto claiming started (URL Parameter Method).", Fore.WHITE)
+    try:
+        token = header['tga-auth-token']  # Kirim token sebagai parameter URL
+        response = session.get(f"{url}/mining/claim?token={token}", timeout=10)
+        if response.status_code == 200:
+            log_message("Claim berhasil.", Fore.LIGHTGREEN_EX)
+        else:
+            log_message(f"Claim gagal dengan status: {response.status_code}", Fore.RED)
     except requests.exceptions.RequestException as e:
         log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
 
@@ -136,8 +156,10 @@ def main(token):
     log_message("Auto painting started.", Fore.WHITE)
 
     try:
-        # Klaim sumber daya
-        claim(headers)
+        # Pilih metode klaim (Body atau URL Parameter)
+        claim_body(headers)  # Mengirim token di body
+        # Atau gunakan yang ini:
+        # claim_query_param(headers)  # Mengirim token sebagai parameter URL
 
         size = len(image) * len(image[0])
         order = [i for i in range(size)]
