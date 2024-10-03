@@ -46,7 +46,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=0.3,
+        backoff_factor=backoff_factor,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -121,67 +121,19 @@ def paint(canvas_pos, color, header):
         log_message(f"Gagal melukis: {e}", Fore.RED)
         return False
 
-# Fungsi untuk memuat akun dari data.txt
-def load_accounts_from_file(filename):
+# Fungsi untuk mendapatkan token dari file token.txt
+def load_token_from_file(filename):
     with open(filename, 'r') as file:
-        accounts = [f"initData {line.strip()}" for line in file if line.strip()]
-    return accounts
-
-# Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
-def fetch_mining_data(header, retries=3):
-    for attempt in range(retries):
-        try:
-            response = session.get(f"{url}/mining/status", headers=header, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                user_balance = data.get('userBalance', 'Unknown')
-                log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
-                return True
-            elif response.status_code == 401:
-                log_message(f"Userid dari data.txt : 401 Unauthorized", Fore.RED)
-                return False
-            else:
-                log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
-        except requests.exceptions.RequestException as e:
-            log_message(f"Kesalahan saat mengambil data mining: {e}", Fore.RED)
-        time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
-    return False
-
-# Fungsi untuk mendapatkan token baru
-def request_new_token(account):
-    log_message("Meminta token baru...", Fore.YELLOW)
-    try:
-        # Ganti dengan endpoint yang sesuai untuk mendapatkan token baru
-        response = session.post(f"{url}/login", data={"account": account}, timeout=10)
-        if response.status_code == 200:
-            new_token = response.json().get('token')
-            return new_token
-        else:
-            log_message(f"Gagal mendapatkan token baru: {response.status_code}", Fore.RED)
-            return None
-    except requests.exceptions.RequestException as e:
-        log_message(f"Kesalahan saat meminta token baru: {e}", Fore.RED)
-        return None
+        token = file.readline().strip()  # Ambil token dari baris pertama
+    return token
 
 # Fungsi utama untuk melakukan proses melukis
-def main(auth, account):
-    headers = {'authorization': auth}
+def main(token):
+    headers = {'Authorization': f'Bearer {token}'}  # Gunakan token sebagai Bearer token
 
     log_message("Auto painting started.", Fore.WHITE)
 
     try:
-        # Ambil data mining (saldo) sebelum mengklaim sumber daya
-        if not fetch_mining_data(headers):
-            log_message("Token Dari data.txt Expired :(", Fore.RED)
-            # Mendapatkan token baru
-            new_auth = request_new_token(account)  # Mendapatkan token baru
-            if new_auth:
-                headers['authorization'] = new_auth  # Perbarui header dengan token baru
-                log_message("Token diperbarui.", Fore.GREEN)
-            else:
-                log_message("Gagal mendapatkan token baru.", Fore.RED)
-                return
-
         # Klaim sumber daya
         claim(headers)
 
@@ -197,7 +149,7 @@ def main(auth, account):
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
                     log_message("Expired Bang", Fore.RED)
-                    print(headers["authorization"])
+                    print(headers["Authorization"])
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -206,7 +158,7 @@ def main(auth, account):
                 result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                 if result == -1:
                     log_message("Token Expired :(", Fore.RED)
-                    print(headers["authorization"])
+                    print(headers["Authorization"])
                     break
                 elif not result:
                     break
@@ -229,11 +181,11 @@ def countdown_timer(duration):
         time.sleep(1)
         duration -= 1
 
-# Muat satu akun dari data.txt
-akun_list = load_accounts_from_file("data.txt")
+# Muat token dari token.txt
+token = load_token_from_file("token.txt")
 
-# Panggil main hanya dengan satu akun
-if akun_list:
-    main(akun_list[0], akun_list[0])  # Memproses satu akun
+# Panggil main dengan token
+if token:
+    main(token)  # Memproses akun menggunakan token dari file
 else:
-    log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
+    log_message("Tidak ada token yang ditemukan di token.txt", Fore.RED)
