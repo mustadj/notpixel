@@ -5,6 +5,7 @@ import random
 from setproctitle import setproctitle
 from convert import get
 from colorama import Fore, Style, init
+from datetime import datetime
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
@@ -45,7 +46,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=0.3,
+        backoff_factor=backoff_factor,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -56,25 +57,11 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
 # Buat session dengan logika retry
 session = get_session_with_retries()
 
-# Inisialisasi token
-current_token = None
-
-# Fungsi untuk melakukan login awal dan mendapatkan token
-def login(account):
-    global current_token
-    log_message("Melakukan login...", Fore.YELLOW)
-    try:
-        response = session.post(f"{url}/login", data={"account": account}, timeout=10)
-        if response.status_code == 200:
-            current_token = response.json().get('token')
-            log_message("Login berhasil. Token diperoleh.", Fore.GREEN)
-            return current_token
-        else:
-            log_message(f"Gagal login: {response.status_code}", Fore.RED)
-            return None
-    except requests.exceptions.RequestException as e:
-        log_message(f"Kesalahan saat login: {e}", Fore.RED)
-        return None
+# Fungsi untuk memuat akun dari data.txt
+def load_accounts_from_file(filename):
+    with open(filename, 'r') as file:
+        accounts = [line.strip() for line in file if line.strip()]
+    return accounts
 
 # Fungsi untuk mendapatkan warna pixel dari server
 def get_color(pixel, header):
@@ -139,77 +126,19 @@ def paint(canvas_pos, color, header):
         log_message(f"Gagal melukis: {e}", Fore.RED)
         return False
 
-# Fungsi untuk memuat akun dari data.txt
-def load_accounts_from_file(filename):
-    with open(filename, 'r') as file:
-        accounts = [line.strip() for line in file if line.strip()]
-    return accounts
-
-# Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
-def fetch_mining_data(header, retries=3):
-    for attempt in range(retries):
-        try:
-            response = session.get(f"{url}/mining/status", headers=header, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                user_balance = data.get('userBalance', 'Unknown')
-                log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
-                return True
-            elif response.status_code == 401:
-                log_message(f"Userid dari data.txt : 401 Unauthorized", Fore.RED)
-                return False
-            else:
-                log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
-        except requests.exceptions.RequestException as e:
-            log_message(f"Kesalahan saat mengambil data mining: {e}", Fore.RED)
-        time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
-    return False
-
-# Fungsi untuk mendapatkan token baru jika token lama kedaluarsa
-def request_new_token(account):
-    log_message("Meminta token baru...", Fore.YELLOW)
-    try:
-        response = session.post(f"{url}/login", data={"account": account}, timeout=10)
-        if response.status_code == 200:
-            new_token = response.json().get('token')
-            log_message("Token baru diperoleh.", Fore.GREEN)
-            return new_token
-        else:
-            log_message(f"Gagal mendapatkan token baru: {response.status_code}", Fore.RED)
-            return None
-    except requests.exceptions.RequestException as e:
-        log_message(f"Kesalahan saat meminta token baru: {e}", Fore.RED)
-        return None
-
 # Fungsi utama untuk melakukan proses melukis
-def main(account):
-    global current_token
-
-    # Jika token belum ada, login untuk mendapatkan token
-    if current_token is None:
-        current_token = login(account)
-        if current_token is None:
-            return  # Hentikan jika login gagal
-
-    headers = {'authorization': current_token}
+def main(auth, account):
+    headers = {'authorization': auth}
 
     log_message("Auto painting dimulai.", Fore.WHITE)
 
     while True:
         # Cek data mining (saldo)
-        if not fetch_mining_data(headers):
+        if fetch_mining_data(headers) == False:
             log_message("Token Dari data .txt Kedaluwarsa :(", Fore.RED)
-            # Mendapatkan token baru jika token kedaluwarsa
-            new_token = request_new_token(account)
-            if new_token:
-                current_token = new_token  # Perbarui token
-                headers['authorization'] = new_token
-                log_message("Token diperbarui.", Fore.GREEN)
-            else:
-                log_message("Gagal mendapatkan token baru.", Fore.RED)
-                return
+            break  # Keluar dari loop jika token kedaluwarsa
 
-        # Klaim sumber daya
+        # Klaim sumber daya jika token valid
         claim(headers)
 
         size = len(image) * len(image[0])
@@ -241,8 +170,29 @@ def main(account):
             except IndexError:
                 log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
 
-        # Jeda antara pengulangan
-        time.sleep(1)  # Atur sesuai kebutuhan
+        # Tunggu 10 menit sebelum memproses akun berikutnya
+        log_message("Menunggu 10 menit sebelum memproses akun berikutnya...", Fore.YELLOW)
+        time.sleep(10 * 60)
+
+# Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
+def fetch_mining_data(header, retries=3):
+    for attempt in range(retries):
+        try:
+            response = session.get(f"{url}/mining/status", headers=header, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                user_balance = data.get('userBalance', 'Unknown')
+                log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
+                return True
+            elif response.status_code == 401:
+                log_message(f"Userid dari data.txt : 401 Unauthorized", Fore.RED)
+                return False
+            else:
+                log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
+        except requests.exceptions.RequestException as e:
+            log_message(f"Kesalahan saat mengambil data mining: {e}", Fore.RED)
+        time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
+    return False
 
 # Muat akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
@@ -250,7 +200,6 @@ akun_list = load_accounts_from_file("data.txt")
 # Loop terus menerus untuk memproses akun
 while True:
     for account in akun_list:
-        main(account)
-        # Tunggu 10 menit sebelum memproses akun berikutnya
-        log_message("Menunggu 10 menit sebelum memproses akun berikutnya...", Fore.YELLOW)
-        time.sleep(10 * 60)
+        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
+        main(account, account)
+
