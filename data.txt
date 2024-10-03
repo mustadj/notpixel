@@ -1,2 +1,1 @@
-masukin qury id lu disni
-kalo mau lebih dari 1 akun pake proxy dan querynya ditaro bejejer kebawah
+Query_id
