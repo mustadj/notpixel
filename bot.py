@@ -111,7 +111,7 @@ def paint(canvas_pos, color, header):
         if response.status_code == 400:
             log_message("Painter: No charge available. Sleeping for 10 minutes.", Fore.RED)
             countdown_timer(10 * 60)  # Tambahkan countdown timer 10 menit di sini
-            return False
+            return False  # Bot akan melanjutkan setelah timer selesai
         if response.status_code == 401:
             return -1
 
@@ -151,7 +151,6 @@ def fetch_mining_data(header, retries=3):
 def request_new_token(account):
     log_message("Meminta token baru...", Fore.YELLOW)
     try:
-        # Ganti dengan endpoint yang sesuai untuk mendapatkan token baru
         response = session.post(f"{url}/login", data={"account": account}, timeout=10)
         if response.status_code == 200:
             new_token = response.json().get('token')
@@ -170,10 +169,8 @@ def main(auth, account):
     log_message("Auto painting started.", Fore.WHITE)
 
     try:
-        # Ambil data mining (saldo) sebelum mengklaim sumber daya
         if not fetch_mining_data(headers):
             log_message("Token Dari data.txt Expired :(", Fore.RED)
-            # Mendapatkan token baru
             new_auth = request_new_token(account)  # Mendapatkan token baru
             if new_auth:
                 headers['authorization'] = new_auth  # Perbarui header dengan token baru
@@ -182,7 +179,6 @@ def main(auth, account):
                 log_message("Gagal mendapatkan token baru.", Fore.RED)
                 return
 
-        # Klaim sumber daya
         claim(headers)
 
         size = len(image) * len(image[0])
@@ -197,7 +193,6 @@ def main(auth, account):
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
                     log_message("Expired Bang", Fore.RED)
-                    print(headers["authorization"])
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -206,13 +201,11 @@ def main(auth, account):
                 result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                 if result == -1:
                     log_message("Token Expired :(", Fore.RED)
-                    print(headers["authorization"])
                     break
                 elif not result:
                     break
 
-                # Simulasi pergerakan mouse dengan jeda acak
-                time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
+                time.sleep(random.uniform(0.1, 0.3))
 
             except IndexError:
                 log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
@@ -237,4 +230,3 @@ if akun_list:
     main(akun_list[0], akun_list[0])  # Memproses satu akun
 else:
     log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
-
