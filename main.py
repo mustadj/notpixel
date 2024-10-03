@@ -232,7 +232,6 @@ def countdown_timer(duration):
 def process_accounts(accounts):
     for account in accounts:
         # Proses setiap akun satu per satu
-        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
         main(account, account)
 
     # Tunggu 5 menit sebelum memulai ulang sesi
