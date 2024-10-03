@@ -157,7 +157,7 @@ def request_new_token(account):
         return None
 
 # Fungsi utama untuk melakukan proses melukis
-def main(auth, account):
+def main(auth):
     headers = {'authorization': auth}
 
     log_message("Auto painting started.", Fore.WHITE)
@@ -165,15 +165,8 @@ def main(auth, account):
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
         if not fetch_mining_data(headers):
-            log_message("Token Dari data.txt Expired :(", Fore.RED)
-            # Mendapatkan token baru
-            new_auth = request_new_token(account)  # Mendapatkan token baru
-            if new_auth:
-                headers['authorization'] = new_auth  # Perbarui header dengan token baru
-                log_message("Token diperbarui.", Fore.GREEN)
-            else:
-                log_message("Gagal mendapatkan token baru.", Fore.RED)
-                return
+            log_message("Token Dari data .txt Expired :(", Fore.RED)
+            return
 
         # Klaim sumber daya
         claim(headers)
@@ -213,9 +206,10 @@ def main(auth, account):
     except requests.exceptions.RequestException as e:
         log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
-# Muat akun dari data.txt
+# Muat token dari file data.txt
 with open('data.txt', 'r') as file:
-    account = file.readline().strip()
+    auth_token = file.readline().strip()
 
 # Jalankan bot untuk satu akun
-main(auth, account)
+main(auth_token)
+
