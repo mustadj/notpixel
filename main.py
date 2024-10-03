@@ -169,56 +169,57 @@ def main(auth, account):
 
     log_message("Auto painting started.", Fore.WHITE)
 
-    try:
-        # Ambil data mining (saldo) sebelum mengklaim sumber daya
-        if not fetch_mining_data(headers):
-            log_message("Token Dari data.txt Expired :(", Fore.RED)
-            # Mendapatkan token baru
-            new_auth = request_new_token(account)  # Mendapatkan token baru
-            if new_auth:
-                headers['authorization'] = new_auth  # Perbarui header dengan token baru
-                log_message("Token diperbarui.", Fore.GREEN)
-            else:
-                log_message("Gagal mendapatkan token baru.", Fore.RED)
-                return
+    while True:  # Tambahkan loop utama di sini untuk terus menjalankan proses
+        try:
+            # Ambil data mining (saldo) sebelum mengklaim sumber daya
+            if not fetch_mining_data(headers):
+                log_message("Token Dari data.txt Expired :(", Fore.RED)
+                # Mendapatkan token baru
+                new_auth = request_new_token(account)  # Mendapatkan token baru
+                if new_auth:
+                    headers['authorization'] = new_auth  # Perbarui header dengan token baru
+                    log_message("Token diperbarui.", Fore.GREEN)
+                else:
+                    log_message("Gagal mendapatkan token baru.", Fore.RED)
+                    return
 
-        # Klaim sumber daya
-        claim(headers)
+            # Klaim sumber daya
+            claim(headers)
 
-        size = len(image) * len(image[0])
-        order = [i for i in range(size)]
-        random.shuffle(order)
+            size = len(image) * len(image[0])
+            order = [i for i in range(size)]
+            random.shuffle(order)
 
-        for pos_image in order:
-            x, y = get_pos(pos_image, len(image[0]))
-            time.sleep(random.uniform(0.05, 0.2))  # Jeda acak di antara permintaan
+            for pos_image in order:
+                x, y = get_pos(pos_image, len(image[0]))
+                time.sleep(random.uniform(0.05, 0.2))  # Jeda acak di antara permintaan
 
-            try:
-                color = get_color(get_canvas_pos(x, y), headers)
-                if color == -1:
-                    log_message("Expired Bang", Fore.RED)
-                    print(headers["authorization"])
-                    break
+                try:
+                    color = get_color(get_canvas_pos(x, y), headers)
+                    if color == -1:
+                        log_message("Expired Bang", Fore.RED)
+                        print(headers["authorization"])
+                        break
 
-                if image[y][x] == ' ' or color == c[image[y][x]]:
-                    continue
+                    if image[y][x] == ' ' or color == c[image[y][x]]:
+                        continue
 
-                result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
-                if result == -1:
-                    log_message("Token Expired :(", Fore.RED)
-                    print(headers["authorization"])
-                    break
-                elif not result:
-                    break
+                    result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
+                    if result == -1:
+                        log_message("Token Expired :(", Fore.RED)
+                        print(headers["authorization"])
+                        break
+                    elif not result:
+                        break
 
-                # Simulasi pergerakan mouse dengan jeda acak
-                time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
+                    # Simulasi pergerakan mouse dengan jeda acak
+                    time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
 
-            except IndexError:
-                log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
+                except IndexError:
+                    log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
 
-    except requests.exceptions.RequestException as e:
-        log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
+        except requests.exceptions.RequestException as e:
+            log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
 # Fungsi untuk menampilkan timer mundur
 def countdown_timer(duration):
