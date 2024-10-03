@@ -5,7 +5,6 @@ import random
 from setproctitle import setproctitle
 from convert import get
 from colorama import Fore, Style, init
-from datetime import datetime
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
@@ -143,7 +142,7 @@ def paint(canvas_pos, color, header):
 # Fungsi untuk memuat akun dari data.txt
 def load_accounts_from_file(filename):
     with open(filename, 'r') as file:
-        accounts = [f"initData {line.strip()}" for line in file if line.strip()]
+        accounts = [line.strip() for line in file if line.strip()]
     return accounts
 
 # Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
@@ -173,6 +172,7 @@ def request_new_token(account):
         response = session.post(f"{url}/login", data={"account": account}, timeout=10)
         if response.status_code == 200:
             new_token = response.json().get('token')
+            log_message("Token baru diperoleh.", Fore.GREEN)
             return new_token
         else:
             log_message(f"Gagal mendapatkan token baru: {response.status_code}", Fore.RED)
@@ -244,15 +244,6 @@ def main(account):
         # Jeda antara pengulangan
         time.sleep(1)  # Atur sesuai kebutuhan
 
-# Fungsi untuk menampilkan timer mundur
-def countdown_timer(duration):
-    while duration > 0:
-        mins, secs = divmod(duration, 60)
-        timer = f'{int(mins):02}:{int(secs):02}'
-        print(f'Timer Mundur: {timer}', end="\r")
-        time.sleep(1)
-        duration -= 1
-
 # Muat akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
 
@@ -260,3 +251,6 @@ akun_list = load_accounts_from_file("data.txt")
 while True:
     for account in akun_list:
         main(account)
+        # Tunggu 10 menit sebelum memproses akun berikutnya
+        log_message("Menunggu 10 menit sebelum memproses akun berikutnya...", Fore.YELLOW)
+        time.sleep(10 * 60)
