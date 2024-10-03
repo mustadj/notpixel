@@ -13,7 +13,7 @@ url = "https://notpx.app/api/v1"
 
 # WAKTU TUNGGU
 WAIT = 180 * 3
-DELAY = 1
+DELAY = random.uniform(1, 3)  # Delay acak lebih luas untuk anti-bot
 
 # DIMENSI GAMBAR
 WIDTH = 1000
@@ -56,6 +56,17 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
 
 # Buat session dengan logika retry
 session = get_session_with_retries()
+
+# Tambahkan headers untuk menyerupai request dari browser sungguhan
+def get_headers():
+    return {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Referer': 'https://example.com',
+        'Connection': 'keep-alive',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Cache-Control': 'max-age=0'
+    }
 
 # Fungsi untuk mendapatkan warna pixel dari server
 def get_color(pixel, header):
@@ -110,7 +121,7 @@ def paint(canvas_pos, color, header):
         response = session.post(f"{url}/repaint/start", data=json.dumps(data), headers=header, timeout=10)
         if response.status_code == 400:
             log_message("Painter: No charge available. Sleeping for 10 minutes.", Fore.RED)
-            countdown_timer(10 * 60)  # Tambahkan countdown timer 10 menit di sini
+            countdown_timer(10 * 60)
             log_message("Timer selesai. Melanjutkan eksekusi.", Fore.YELLOW)
             return False
         if response.status_code == 401:
@@ -165,18 +176,18 @@ def request_new_token(account):
 
 # Fungsi utama untuk melakukan proses melukis
 def main(auth, account):
-    headers = {'authorization': auth}
+    headers = get_headers()
+    headers['authorization'] = auth  # Tambah authorization ke header
 
     log_message("Auto painting started.", Fore.WHITE)
 
-    while True:  # Ubah menjadi loop yang terus berjalan
+    while True:
         try:
             if not fetch_mining_data(headers):
                 log_message("Token Dari data.txt Expired :(", Fore.RED)
-                # Mendapatkan token baru
-                new_auth = request_new_token(account)  # Mendapatkan token baru
+                new_auth = request_new_token(account)
                 if new_auth:
-                    headers['authorization'] = new_auth  # Perbarui header dengan token baru
+                    headers['authorization'] = new_auth
                     log_message("Token diperbarui.", Fore.GREEN)
                 else:
                     log_message("Gagal mendapatkan token baru.", Fore.RED)
@@ -191,7 +202,7 @@ def main(auth, account):
 
             for pos_image in order:
                 x, y = get_pos(pos_image, len(image[0]))
-                time.sleep(random.uniform(0.05, 0.2))  # Jeda acak di antara permintaan
+                time.sleep(random.uniform(1, 3))  # Jeda acak yang lebih besar
 
                 try:
                     color = get_color(get_canvas_pos(x, y), headers)
@@ -211,7 +222,6 @@ def main(auth, account):
                     elif not result:
                         break
 
-                    # Simulasi pergerakan mouse dengan jeda acak
                     time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
 
                 except IndexError:
@@ -228,7 +238,6 @@ def countdown_timer(duration):
         print(f'Timer Mundur: {timer}', end="\r")
         time.sleep(1)
         duration -= 1
-    # Tambahkan pesan setelah countdown selesai untuk memastikan proses lanjut
     print("Countdown selesai. Melanjutkan proses...")
 
 # Muat satu akun dari data.txt
@@ -236,6 +245,6 @@ akun_list = load_accounts_from_file("data.txt")
 
 # Panggil main hanya dengan satu akun
 if akun_list:
-    main(akun_list[0], akun_list[0])  # Memproses satu akun
+    main(akun_list[0], akun_list[0])
 else:
     log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
