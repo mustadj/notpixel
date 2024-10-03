@@ -57,6 +57,26 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
 # Buat session dengan logika retry
 session = get_session_with_retries()
 
+# Inisialisasi token
+current_token = None
+
+# Fungsi untuk melakukan login awal dan mendapatkan token
+def login(account):
+    global current_token
+    log_message("Melakukan login...", Fore.YELLOW)
+    try:
+        response = session.post(f"{url}/login", data={"account": account}, timeout=10)
+        if response.status_code == 200:
+            current_token = response.json().get('token')
+            log_message("Login berhasil. Token diperoleh.", Fore.GREEN)
+            return current_token
+        else:
+            log_message(f"Gagal login: {response.status_code}", Fore.RED)
+            return None
+    except requests.exceptions.RequestException as e:
+        log_message(f"Kesalahan saat login: {e}", Fore.RED)
+        return None
+
 # Fungsi untuk mendapatkan warna pixel dari server
 def get_color(pixel, header):
     try:
@@ -109,7 +129,7 @@ def paint(canvas_pos, color, header):
     try:
         response = session.post(f"{url}/repaint/start", data=json.dumps(data), headers=header, timeout=10)
         if response.status_code == 400:
-            log_message("Painter: Tidak ada energy yang tersedia. Tidur selama 10 menit.", Fore.RED)
+            log_message("Painter: Tidak ada energy yang tersedia. Tidur selama 5 menit.", Fore.RED)
             return False
         if response.status_code == 401:
             return -1
@@ -137,7 +157,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f"401 Unauthorized", Fore.RED)
+                log_message(f"Userid dari data.txt : 401 Unauthorized", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -146,7 +166,7 @@ def fetch_mining_data(header, retries=3):
         time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
     return False
 
-# Fungsi untuk mendapatkan token baru jika token lama kadaluarsa
+# Fungsi untuk mendapatkan token baru jika token lama kedaluarsa
 def request_new_token(account):
     log_message("Meminta token baru...", Fore.YELLOW)
     try:
@@ -162,28 +182,34 @@ def request_new_token(account):
         return None
 
 # Fungsi utama untuk melakukan proses melukis
-def main(account, auth=None):
-    if not auth:
-        auth = request_new_token(account)
-        if not auth:
-            log_message("Gagal login", Fore.RED)
-            return
+def main(account):
+    global current_token
 
-    headers = {'authorization': auth}
+    # Jika token belum ada, login untuk mendapatkan token
+    if current_token is None:
+        current_token = login(account)
+        if current_token is None:
+            return  # Hentikan jika login gagal
+
+    headers = {'authorization': current_token}
+
     log_message("Auto painting dimulai.", Fore.WHITE)
 
-    try:
+    while True:
+        # Cek data mining (saldo)
         if not fetch_mining_data(headers):
-            log_message("Token kadaluarsa, meminta token baru", Fore.RED)
-            new_auth = request_new_token(account)
-            if new_auth:
-                headers['authorization'] = new_auth  # Update token
+            log_message("Token Dari data .txt Kedaluwarsa :(", Fore.RED)
+            # Mendapatkan token baru jika token kedaluwarsa
+            new_token = request_new_token(account)
+            if new_token:
+                current_token = new_token  # Perbarui token
+                headers['authorization'] = new_token
                 log_message("Token diperbarui.", Fore.GREEN)
             else:
                 log_message("Gagal mendapatkan token baru.", Fore.RED)
                 return
 
-        # Klaim sumber daya jika token valid
+        # Klaim sumber daya
         claim(headers)
 
         size = len(image) * len(image[0])
@@ -192,12 +218,12 @@ def main(account, auth=None):
 
         for pos_image in order:
             x, y = get_pos(pos_image, len(image[0]))
-            time.sleep(random.uniform(0.05, 0.2))
+            time.sleep(random.uniform(0.05, 0.2))  # Jeda acak di antara permintaan
 
             try:
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
-                    log_message("Token kadaluarsa.", Fore.RED)
+                    log_message("Expired Bang", Fore.RED)
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -210,13 +236,13 @@ def main(account, auth=None):
                 elif not result:
                     break
 
-                time.sleep(random.uniform(0.1, 0.3))
+                time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
 
             except IndexError:
                 log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
 
-    except requests.exceptions.RequestException as e:
-        log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
+        # Jeda antara pengulangan
+        time.sleep(1)  # Atur sesuai kebutuhan
 
 # Fungsi untuk menampilkan timer mundur
 def countdown_timer(duration):
@@ -231,9 +257,6 @@ def countdown_timer(duration):
 akun_list = load_accounts_from_file("data.txt")
 
 # Loop terus menerus untuk memproses akun
-tokens = {}
 while True:
     for account in akun_list:
-        token = tokens.get(account, None)
-        main(account, token)
-    countdown_timer(10 * 60)
+        main(account)
