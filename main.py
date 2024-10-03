@@ -195,7 +195,7 @@ def proses_akun_terus(akun_list):
     waktu_mulai_akun_pertama = datetime.now()
 
     for akun in akun_list:
-        catat_pesan("--- MULAI SESI UNTUK AKUN ---", Fore.BLUE)
+        catat_pesan("AKUN SEDANG BERJALAN", Fore.BLUE)
         proses_akun(akun)
 
     waktu_berjalan = datetime.now() - waktu_mulai_akun_pertama
