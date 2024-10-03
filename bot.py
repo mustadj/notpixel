@@ -230,14 +230,14 @@ def main(auth, account):
         except requests.exceptions.RequestException as e:
             log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
-# Fungsi untuk menampilkan timer mundur dengan kursor dipindahkan ke belakang detik terakhir
+# Fungsi untuk menampilkan timer mundur secara normal pada satu baris
 def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
 
-        # Menampilkan timer dan memindahkan kursor tepat setelah angka terakhir
-        print(f'Timer Mundur: {timer}', end="\033[1D")  # \033[1D untuk memindahkan kursor satu karakter ke kiri
+        # Gunakan carriage return untuk menimpa timer sebelumnya di satu baris
+        print(f'Timer Mundur: {timer}', end='\r')  # Menggunakan '\r' untuk menimpa baris sebelumnya
 
         time.sleep(1)
         duration -= 1
