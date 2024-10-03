@@ -46,7 +46,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=backoff_factor,
+        backoff_factor=0.3,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -125,16 +125,29 @@ def paint(canvas_pos, color, header):
         log_message(f"Gagal melukis: {e}", Fore.RED)
         return False
 
-# Fungsi untuk mendapatkan token dari file token.txt
+# Fungsi untuk mendapatkan token dari file data.txt
 def load_token_from_file(filename):
     with open(filename, 'r') as file:
         token = file.readline().strip()  # Ambil token dari baris pertama
     return token
 
+# Fungsi untuk memperbarui token jika expired
+def refresh_token():
+    # Proses yang Anda lakukan untuk mendapatkan token baru
+    log_message("Meminta token baru...", Fore.YELLOW)
+    # Ganti ini dengan permintaan yang sesuai untuk mendapatkan token baru
+    new_token = "NEW_TOKEN_HERE"  
+    if new_token:
+        with open("data.txt", 'w') as file:
+            file.write(new_token)  # Simpan token baru ke file
+        return new_token
+    return None
+
 # Fungsi utama untuk melakukan proses melukis
-def main(token):
+def main():
+    token = load_token_from_file("data.txt")
     headers = {
-        'Tga-Auth-Token': token,  # Gunakan Tga-Auth-Token yang ditemukan
+        'Authorization': token,  # Gunakan token dari file
     }
 
     log_message("Auto painting started.", Fore.WHITE)
@@ -155,23 +168,22 @@ def main(token):
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
                     log_message("Expired Bang", Fore.RED)
-                    print(headers["Tga-Auth-Token"])
-                    break
-
-                if image[y][x] == ' ' or color == c[image[y][x]]:
-                    continue
-
-                result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
-                if result == -1:
-                    log_message("Token Expired :(", Fore.RED)
-                    print(headers["Tga-Auth-Token"])
-                    break
-                elif not result:
-                    break
-
-                # Simulasi pergerakan mouse dengan jeda acak
-                time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
-
+                    print(headers["Authorization"])
+                    # Jika token expired, refresh token
+                    new_token = refresh_token()
+                    if new_token:
+                        headers["Authorization"] = new_token
+                    else:
+                        log_message("Gagal memperbarui token.", Fore.RED)
+                        break
+                elif image[y][x] != ' ' and color != c[image[y][x]]:
+                    result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
+                    if result == -1:
+                        log_message("Token Expired :(", Fore.RED)
+                        print(headers["Authorization"])
+                        break
+                    elif not result:
+                        break
             except IndexError:
                 log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
 
@@ -187,11 +199,5 @@ def countdown_timer(duration):
         time.sleep(1)
         duration -= 1
 
-# Muat token dari token.txt
-token = load_token_from_file("token.txt")
-
 # Panggil main dengan token
-if token:
-    main(token)  # Memproses akun menggunakan token dari file
-else:
-    log_message("Tidak ada token yang ditemukan di token.txt", Fore.RED)
+main()
