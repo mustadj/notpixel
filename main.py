@@ -137,7 +137,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f" Userid dari data.txt : 401 Unauthorized", Fore.RED)
+                log_message(f"Userid dari data.txt: 401 Unauthorized", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -170,7 +170,7 @@ def main(auth, account):
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
         if not fetch_mining_data(headers):
-            log_message("Token Dari data .txt Expired :(", Fore.RED)
+            log_message("Token Dari data.txt Expired :(", Fore.RED)
             # Mendapatkan token baru
             new_auth = request_new_token(account)  # Mendapatkan token baru
             if new_auth:
@@ -224,11 +224,6 @@ def countdown_timer(duration):
         timer = f'{int(mins):02}:{int(secs):02}'
         print(f'Timer Mundur: {timer}', end="\r")
         time.sleep(1)
-        duration -= 1Here's the completion of the code that modifies the existing structure to maintain a continuous session without repeating the login process from `data.txt`:
-
-```python
-    log_message(f'Timer Mundur: {timer}', end="\r")
-        time.sleep(1)
         duration -= 1
 
 # Fungsi untuk memproses semua akun dan logika tidur
@@ -251,6 +246,9 @@ def process_accounts(accounts):
 
         # Proses akun tanpa mengulang login jika token masih valid
         if fetch_mining_data(headers):  # Jika token valid
+            log_message(f"--- Memproses akun {Berikut adalah bagian kode yang telah diperbaiki:
+
+```python
             log_message(f"--- Memproses akun {account} ---", Fore.WHITE)
             main(auth, account)
         else:
