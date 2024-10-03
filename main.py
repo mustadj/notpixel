@@ -228,20 +228,16 @@ def countdown_timer(duration):
         time.sleep(1)
         duration -= 1
 
-# Fungsi untuk memproses semua akun dan logika tidur
-def process_accounts(accounts):
-    for account in accounts:
-        # Proses setiap akun satu per satu
-        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
-        main(account, account)
-
-    # Tunggu 5 menit sebelum memulai ulang sesi
-    log_message("Menunggu 10 menit sebelum memulai sesi ulang...", Fore.WHITE)
-    countdown_timer(10 * 60)
+# Fungsi untuk memproses satu akun
+def process_single_account(account):
+    log_message(f"--- MEMULAI SESI UNTUK AKUN {account} ---", Fore.WHITE)
+    main(account, account)
 
 # Muat akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
 
-# Loop terus menerus untuk memproses akun
-while True:
-    process_accounts(akun_list)
+# Proses hanya satu akun
+if akun_list:
+    process_single_account(akun_list[0])
+else:
+    log_message("Tidak ada akun yang tersedia di file.", Fore.RED)
