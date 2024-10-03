@@ -46,7 +46,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=0.3,
+        backoff_factor=backoff_factor,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -246,29 +246,5 @@ def process_accounts(accounts):
 
         # Proses akun tanpa mengulang login jika token masih valid
         if fetch_mining_data(headers):  # Jika token valid
-            log_message(f"--- Memproses akun {Berikut adalah bagian kode yang telah diperbaiki:
-
-```python
             log_message(f"--- Memproses akun {account} ---", Fore.WHITE)
             main(auth, account)
-        else:
-            # Jika token tidak valid, perbarui token
-            log_message(f"Token akun {account} expired, memperbarui...", Fore.YELLOW)
-            new_auth = request_new_token(account)
-            if new_auth:
-                auth_tokens[account] = new_auth  # Simpan token baru
-                log_message(f"Token akun {account} diperbarui.", Fore.GREEN)
-                main(new_auth, account)  # Lanjutkan dengan token baru
-            else:
-                log_message(f"Gagal memperbarui token untuk akun {account}", Fore.RED)
-
-    # Tunggu 10 menit sebelum memulai ulang proses untuk semua akun
-    log_message("Menunggu 10 menit sebelum memulai sesi ulang...", Fore.WHITE)
-    countdown_timer(10 * 60)
-
-# Muat akun dari data.txt
-akun_list = load_accounts_from_file("data.txt")
-
-# Loop terus menerus untuk memproses akun
-while True:
-    process_accounts(akun_list)
