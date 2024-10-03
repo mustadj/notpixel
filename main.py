@@ -37,8 +37,7 @@ c = {
 
 # Fungsi untuk mencatat pesan dengan timestamp dalam warna abu-abu muda
 def log_message(message, color=Style.RESET_ALL):
-    current_time = datetime.now().strftime("[%H:%M:%S]")
-    print(f"{Fore.LIGHTBLACK_EX}{current_time}{Style.RESET_ALL} {color}{message}{Style.RESET_ALL}")
+    print(f"{color}{message}{Style.RESET_ALL}")
 
 # Fungsi untuk menginisialisasi session requests dengan logika retry
 def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504)):
@@ -78,7 +77,7 @@ def get_color(pixel, header):
 
 # Fungsi untuk mengklaim sumber daya dari server
 def claim(header):
-    log_message("Auto claiming started.", Fore.CYAN)
+    log_message("Auto claiming started.", Fore.WHITE)
     try:
         session.get(f"{url}/mining/claim", headers=header, timeout=10)
     except requests.exceptions.RequestException as e:
@@ -138,7 +137,7 @@ def fetch_mining_data(header, retries=3):
             if response.status_code == 200:
                 data = response.json()
                 user_balance = data.get('userBalance', 'Unknown')
-                log_message(f"Jumlah Pixel: {user_balance}", Fore.MAGENTA)
+                log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
                 log_message(f"Gagal mengambil data mining: 401 Unauthorized", Fore.RED)
@@ -154,7 +153,7 @@ def fetch_mining_data(header, retries=3):
 def main(auth, account):
     headers = {'authorization': auth}
 
-    log_message("Auto painting started.", Fore.BLUE)
+    log_message("Auto painting started.", Fore.WHITE)
 
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
@@ -210,11 +209,11 @@ def countdown_timer(duration):
 def process_accounts(accounts):
     for account in accounts:
         # Proses setiap akun satu per satu
-        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.BLUE)
+        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
         main(account, account)
 
     # Tunggu 5 menit sebelum memulai ulang sesi
-    log_message("Menunggu 5 menit sebelum memulai sesi ulang...", Fore.YELLOW)
+    log_message("Menunggu 5 menit sebelum memulai sesi ulang...", Fore.WHITE)
     countdown_timer(5 * 60)
 
 # Muat akun dari data.txt
