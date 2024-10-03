@@ -35,7 +35,7 @@ c = {
     '*': "#ffffff"
 }
 
-# Fungsi untuk mencatat pesan dengan timestamp dalam warna abu-abu muda
+# Fungsi untuk mencatat pesan dengan timestamp
 def log_message(message, color=Style.RESET_ALL):
     print(f"{color}{message}{Style.RESET_ALL}")
 
@@ -116,7 +116,6 @@ def paint(canvas_pos, color, header):
         if response.status_code == 401:
             return -1
 
-        # Log informasi pixel yang dicat dengan warna hijau muda
         log_message(f"Painter: 1 Pixel painted successfully.", Fore.LIGHTGREEN_EX)
         return True
     except requests.exceptions.RequestException as e:
@@ -140,7 +139,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f"Gagal mengambil data mining: 401 Unauthorized", Fore.RED)
+                log_message(f" Userid dari data.txt : 401 Unauthorized", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -158,7 +157,7 @@ def main(auth, account):
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
         if not fetch_mining_data(headers):
-            log_message("DEAD :(", Fore.RED)
+            log_message("Token Dari data .txt Expired :(", Fore.RED)
             print(headers["authorization"])
             return
 
@@ -171,7 +170,8 @@ def main(auth, account):
 
         for pos_image in order:
             x, y = get_pos(pos_image, len(image[0]))
-            time.sleep(0.05 + random.uniform(0.01, 0.1))
+            time.sleep(random.uniform(0.05, 0.2))  # Jeda acak di antara permintaan
+
             try:
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
@@ -189,6 +189,9 @@ def main(auth, account):
                     break
                 elif not result:
                     break
+
+                # Simulasi pergerakan mouse dengan jeda acak
+                time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
 
             except IndexError:
                 log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
@@ -209,6 +212,7 @@ def countdown_timer(duration):
 def process_accounts(accounts):
     for account in accounts:
         # Proses setiap akun satu per satu
+        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
         main(account, account)
 
     # Tunggu 5 menit sebelum memulai ulang sesi
