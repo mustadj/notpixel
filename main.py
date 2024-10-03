@@ -150,7 +150,6 @@ def fetch_mining_data(header, retries=3):
 def request_new_token(account):
     log_message("Meminta token baru...", Fore.YELLOW)
     try:
-        # Ganti dengan endpoint yang sesuai untuk mendapatkan token baru
         response = session.post(f"{url}/login", data={"account": account}, timeout=10)
         if response.status_code == 200:
             new_token = response.json().get('token')
@@ -210,7 +209,6 @@ def main(auth, account):
                 elif not result:
                     break
 
-                # Simulasi pergerakan mouse dengan jeda acak
                 time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
 
             except IndexError:
@@ -226,16 +224,47 @@ def countdown_timer(duration):
         timer = f'{int(mins):02}:{int(secs):02}'
         print(f'Timer Mundur: {timer}', end="\r")
         time.sleep(1)
+        duration -= 1Here's the completion of the code that modifies the existing structure to maintain a continuous session without repeating the login process from `data.txt`:
+
+```python
+    log_message(f'Timer Mundur: {timer}', end="\r")
+        time.sleep(1)
         duration -= 1
 
 # Fungsi untuk memproses semua akun dan logika tidur
 def process_accounts(accounts):
+    auth_tokens = {}  # Dictionary to store active tokens for each account
+    
     for account in accounts:
-        # Proses setiap akun satu per satu
-        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
-        main(account, account)
+        # Ambil token dari file atau perbarui token jika belum ada
+        if account not in auth_tokens:
+            auth = request_new_token(account)  # Login untuk mendapatkan token pertama kali
+            if auth:
+                auth_tokens[account] = auth
+            else:
+                log_message(f"Gagal login akun {account}", Fore.RED)
+                continue
+        else:
+            auth = auth_tokens[account]  # Gunakan token yang sudah ada
+        
+        headers = {'authorization': auth}
 
-    # Tunggu 5 menit sebelum memulai ulang sesi
+        # Proses akun tanpa mengulang login jika token masih valid
+        if fetch_mining_data(headers):  # Jika token valid
+            log_message(f"--- Memproses akun {account} ---", Fore.WHITE)
+            main(auth, account)
+        else:
+            # Jika token tidak valid, perbarui token
+            log_message(f"Token akun {account} expired, memperbarui...", Fore.YELLOW)
+            new_auth = request_new_token(account)
+            if new_auth:
+                auth_tokens[account] = new_auth  # Simpan token baru
+                log_message(f"Token akun {account} diperbarui.", Fore.GREEN)
+                main(new_auth, account)  # Lanjutkan dengan token baru
+            else:
+                log_message(f"Gagal memperbarui token untuk akun {account}", Fore.RED)
+
+    # Tunggu 10 menit sebelum memulai ulang proses untuk semua akun
     log_message("Menunggu 10 menit sebelum memulai sesi ulang...", Fore.WHITE)
     countdown_timer(10 * 60)
 
