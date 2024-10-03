@@ -110,7 +110,7 @@ def paint(canvas_pos, color, header):
         response = session.post(f"{url}/repaint/start", data=json.dumps(data), headers=header, timeout=10)
         if response.status_code == 400:
             log_message("Painter: No charge available. Sleeping for 10 minutes.", Fore.RED)
-            countdown_timer(10 * 60)  # Tambahkan countdown timer 10 menit di sini
+            countdown_timer(10 * 60)
             return False
         if response.status_code == 401:
             return -1
@@ -144,18 +144,25 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
         except requests.exceptions.RequestException as e:
             log_message(f"Kesalahan saat mengambil data mining: {e}", Fore.RED)
-        time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
+        time.sleep(1)
     return False
 
 # Fungsi untuk mendapatkan token baru
 def request_new_token(account):
-    log_message("Meminta token baru...", Fore.YELLOW)
+    log_message(f"Meminta token baru untuk akun: {account}", Fore.YELLOW)
     try:
-        # Ganti dengan endpoint yang sesuai untuk mendapatkan token baru
-        response = session.post(f"{url}/login", data={"account": account}, timeout=10)
+        response = session.post(f"{url}/login", data={"account": account}, timeout=10)  # Periksa endpoint yang benar
         if response.status_code == 200:
             new_token = response.json().get('token')
-            return new_token
+            if new_token:
+                log_message("Token baru berhasil didapatkan.", Fore.GREEN)
+                return new_token
+            else:
+                log_message("Token tidak ditemukan dalam respons.", Fore.RED)
+                return None
+        elif response.status_code == 404:
+            log_message("Endpoint tidak ditemukan: 404", Fore.RED)
+            return None
         else:
             log_message(f"Gagal mendapatkan token baru: {response.status_code}", Fore.RED)
             return None
@@ -169,15 +176,15 @@ def main(auth, account):
 
     log_message("Auto painting started.", Fore.WHITE)
 
-    while True:  # Tambahkan loop utama di sini untuk terus menjalankan proses
+    while True:  # Tambahkan loop utama untuk terus menjalankan proses
         try:
             # Ambil data mining (saldo) sebelum mengklaim sumber daya
             if not fetch_mining_data(headers):
                 log_message("Token Dari data.txt Expired :(", Fore.RED)
                 # Mendapatkan token baru
-                new_auth = request_new_token(account)  # Mendapatkan token baru
+                new_auth = request_new_token(account)
                 if new_auth:
-                    headers['authorization'] = new_auth  # Perbarui header dengan token baru
+                    headers['authorization'] = new_auth
                     log_message("Token diperbarui.", Fore.GREEN)
                 else:
                     log_message("Gagal mendapatkan token baru.", Fore.RED)
@@ -192,7 +199,7 @@ def main(auth, account):
 
             for pos_image in order:
                 x, y = get_pos(pos_image, len(image[0]))
-                time.sleep(random.uniform(0.05, 0.2))  # Jeda acak di antara permintaan
+                time.sleep(random.uniform(0.05, 0.2))
 
                 try:
                     color = get_color(get_canvas_pos(x, y), headers)
@@ -212,7 +219,6 @@ def main(auth, account):
                     elif not result:
                         break
 
-                    # Simulasi pergerakan mouse dengan jeda acak
                     time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
 
                 except IndexError:
@@ -235,6 +241,6 @@ akun_list = load_accounts_from_file("data.txt")
 
 # Panggil main hanya dengan satu akun
 if akun_list:
-    main(akun_list[0], akun_list[0])  # Memproses satu akun
+    main(akun_list[0], akun_list[0])
 else:
     log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
