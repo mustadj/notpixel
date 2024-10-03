@@ -125,8 +125,22 @@ def paint(canvas_pos, color, header):
 # Fungsi untuk memuat akun dari data.txt
 def load_accounts_from_file(filename):
     with open(filename, 'r') as file:
-        accounts = [f"initData {line.strip()}" for line in file if line.strip()]
+        accounts = [line.strip() for line in file if line.strip()]
     return accounts
+
+# Fungsi untuk mengambil UserID/token yang baru setelah login berhasil
+def get_new_token():
+    try:
+        response = session.post(f"{url}/auth/login", timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            return data.get('authToken')  # Token baru dari respons
+        else:
+            log_message(f"Gagal mendapatkan token baru: {response.status_code}", Fore.RED)
+            return None
+    except requests.exceptions.RequestException as e:
+        log_message(f"Kesalahan saat mendapatkan token baru: {e}", Fore.RED)
+        return None
 
 # Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
 def fetch_mining_data(header, retries=3):
@@ -139,7 +153,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f" Userid dari data.txt : 401 Unauthorized", Fore.RED)
+                log_message(f"User ID expired. Memperbarui token...", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -157,9 +171,11 @@ def main(auth, account):
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
         if not fetch_mining_data(headers):
-            log_message("Token Dari data .txt Expired :(", Fore.RED)
-            print(headers["authorization"])
-            return
+            # Jika expired, perbarui token dari server
+            new_auth = get_new_token()
+            if new_auth:
+                headers['authorization'] = new_auth
+                log_message(f"Token diperbarui: {new_auth}", Fore.GREEN)
 
         # Klaim sumber daya
         claim(headers)
@@ -175,8 +191,10 @@ def main(auth, account):
             try:
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
-                    log_message("DEAD :(", Fore.RED)
-                    print(headers["authorization"])
+                    new_auth = get_new_token()  # Perbarui token jika diperlukan
+                    if new_auth:
+                        headers['authorization'] = new_auth
+                        log_message(f"Token diperbarui: {new_auth}", Fore.GREEN)
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -212,10 +230,9 @@ def countdown_timer(duration):
 def process_accounts(accounts):
     for account in accounts:
         # Proses setiap akun satu per satu
-        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
         main(account, account)
 
-    # Tunggu 5 menit sebelum memulai ulang sesi
+    # Tunggu 10 menit sebelum memulai ulang sesi
     log_message("Menunggu 10 menit sebelum memulai sesi ulang...", Fore.WHITE)
     countdown_timer(10 * 60)
 
@@ -223,5 +240,4 @@ def process_accounts(accounts):
 akun_list = load_accounts_from_file("data.txt")
 
 # Loop terus menerus untuk memproses akun
-while True:
-    process_accounts(akun_list)
+while True
