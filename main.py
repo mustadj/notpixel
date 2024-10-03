@@ -195,7 +195,7 @@ def main(auth, account):
             try:
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
-                    log_message("DEAD :(", Fore.RED)
+                    log_message("Expired Bang", Fore.RED)
                     print(headers["authorization"])
                     break
 
