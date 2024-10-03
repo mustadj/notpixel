@@ -46,7 +46,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=backoff_factor,
+        backoff_factor=0.3,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -137,7 +137,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f"Userid dari data.txt: 401 Unauthorized", Fore.RED)
+                log_message(f" Userid dari data.txt : 401 Unauthorized", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -150,6 +150,7 @@ def fetch_mining_data(header, retries=3):
 def request_new_token(account):
     log_message("Meminta token baru...", Fore.YELLOW)
     try:
+        # Ganti dengan endpoint yang sesuai untuk mendapatkan token baru
         response = session.post(f"{url}/login", data={"account": account}, timeout=10)
         if response.status_code == 200:
             new_token = response.json().get('token')
@@ -170,7 +171,7 @@ def main(auth, account):
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
         if not fetch_mining_data(headers):
-            log_message("Token Dari data.txt Expired :(", Fore.RED)
+            log_message("Token Dari data .txt Expired :(", Fore.RED)
             # Mendapatkan token baru
             new_auth = request_new_token(account)  # Mendapatkan token baru
             if new_auth:
@@ -209,6 +210,7 @@ def main(auth, account):
                 elif not result:
                     break
 
+                # Simulasi pergerakan mouse dengan jeda acak
                 time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
 
             except IndexError:
@@ -228,23 +230,18 @@ def countdown_timer(duration):
 
 # Fungsi untuk memproses semua akun dan logika tidur
 def process_accounts(accounts):
-    auth_tokens = {}  # Dictionary to store active tokens for each account
-    
     for account in accounts:
-        # Ambil token dari file atau perbarui token jika belum ada
-        if account not in auth_tokens:
-            auth = request_new_token(account)  # Login untuk mendapatkan token pertama kali
-            if auth:
-                auth_tokens[account] = auth
-            else:
-                log_message(f"Gagal login akun {account}", Fore.RED)
-                continue
-        else:
-            auth = auth_tokens[account]  # Gunakan token yang sudah ada
-        
-        headers = {'authorization': auth}
+        # Proses setiap akun satu per satu
+        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
+        main(account, account)
 
-        # Proses akun tanpa mengulang login jika token masih valid
-        if fetch_mining_data(headers):  # Jika token valid
-            log_message(f"--- Memproses akun {account} ---", Fore.WHITE)
-            main(auth, account)
+    # Tunggu 10 menit sebelum memulai ulang sesi
+    log_message("Menunggu 10 menit sebelum memulai sesi ulang...", Fore.WHITE)
+    countdown_timer(10 * 60)
+
+# Muat akun dari data.txt
+akun_list = load_accounts_from_file("data.txt")
+
+# Loop terus menerus untuk memproses akun
+while True:
+    process_accounts(akun_list)
