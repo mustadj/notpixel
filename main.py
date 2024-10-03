@@ -124,8 +124,9 @@ def paint(canvas_pos, color, header):
 # Fungsi untuk memuat UserID dari data.txt
 def load_userid_from_file(filename):
     with open(filename, 'r') as file:
-        account = file.readline().strip()  # Ambil UserID dari baris pertama
-    return account
+        # Ambil hanya bagian setelah 'user=' jika formatnya adalah 'user=....'
+        account = file.readline().strip().split("user=")[-1]
+        return account
 
 # Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
 def fetch_mining_data(header, retries=3):
