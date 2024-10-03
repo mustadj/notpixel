@@ -11,8 +11,8 @@ from requests.packages.urllib3.util.retry import Retry
 
 url = "https://notpx.app/api/v1"
 
-# WAKTU TUNGGU
-WAIT = 180 * 3
+# WAKTU TUNGGU (30 menit = 1800 detik)
+WAIT = 1800
 DELAY = 1
 
 # DIMENSI GAMBAR
@@ -46,7 +46,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=0.3,
+        backoff_factor=backoff_factor,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -121,6 +121,12 @@ def paint(canvas_pos, color, header):
         log_message(f"Gagal melukis: {e}", Fore.RED)
         return False
 
+# Fungsi untuk memuat akun dari data.txt
+def load_accounts_from_file(filename):
+    with open(filename, 'r') as file:
+        accounts = [f"initData {line.strip()}" for line in file if line.strip()]
+    return accounts
+
 # Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
 def fetch_mining_data(header, retries=3):
     for attempt in range(retries):
@@ -141,55 +147,88 @@ def fetch_mining_data(header, retries=3):
         time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
     return False
 
+# Fungsi untuk mendapatkan token baru
+def request_new_token(account):
+    log_message("Meminta UserID baru...", Fore.YELLOW)
+    try:
+        response = session.post(f"{url}/login", data={"account": account}, timeout=10)
+        if response.status_code == 200:
+            new_userid = response.json().get('userid')
+            return new_userid
+        else:
+            log_message(f"Gagal mendapatkan UserID baru: {response.status_code}", Fore.RED)
+            return None
+    except requests.exceptions.RequestException as e:
+        log_message(f"Kesalahan saat meminta UserID baru: {e}", Fore.RED)
+        return None
+
 # Fungsi utama untuk melakukan proses melukis
-def main():
-    # Masukkan token langsung di sini
-    token = 'Bearer eyJhcHBfbmFtZSI6Ik5vdFBpeGVsIiwiYXBwX3VybCI6Imh0dHBzOi8vdC5tZS9ub3RwaXhlbC9hcHAiLCJhcHBfZG9tYWluIjoiaHR0cHM6Ly9hcHAubm90cHguYXBwIn0=!qE41yKlb/OkRyaVhhgdePSZm5Nk7nqsUnsOXDWqNAYE='
-    headers = {'Authorization': token}
+def main(account):
+    # Ambil UserID dari request token baru
+    auth = request_new_token(account)
+    
+    if not auth:
+        log_message("Gagal mendapatkan UserID, keluar...", Fore.RED)
+        return
+    
+    headers = {'authorization': auth}
 
     log_message("Auto painting started.", Fore.WHITE)
 
-    try:
-        # Ambil data mining (saldo) sebelum mengklaim sumber daya
-        if not fetch_mining_data(headers):
-            log_message("Token Expired :(", Fore.RED)
-            return
+    # Looping terus untuk memperbarui UserID setiap 30 menit
+    while True:
+        try:
+            # Ambil data mining (saldo) sebelum mengklaim sumber daya
+            if not fetch_mining_data(headers):
+                log_message("Token dari data.txt expired, memperbarui token...", Fore.RED)
+                # Mendapatkan token baru
+                auth = request_new_token(account)
+                if auth:
+                    headers['authorization'] = auth  # Perbarui header dengan token baru
+                    log_message("Token diperbarui.", Fore.GREEN)
+                else:
+                    log_message("Gagal mendapatkan token baru.", Fore.RED)
+                    return
 
-        # Klaim sumber daya
-        claim(headers)
+            # Klaim sumber daya
+            claim(headers)
 
-        size = len(image) * len(image[0])
-        order = [i for i in range(size)]
-        random.shuffle(order)
+            size = len(image) * len(image[0])
+            order = [i for i in range(size)]
+            random.shuffle(order)
 
-        for pos_image in order:
-            x, y = get_pos(pos_image, len(image[0]))
-            time.sleep(random.uniform(0.05, 0.2))  # Jeda acak di antara permintaan
+            for pos_image in order:
+                x, y = get_pos(pos_image, len(image[0]))
+                time.sleep(random.uniform(0.05, 0.2))  # Jeda acak di antara permintaan
 
-            try:
-                color = get_color(get_canvas_pos(x, y), headers)
-                if color == -1:
-                    log_message("Expired Token", Fore.RED)
-                    break
+                try:
+                    color = get_color(get_canvas_pos(x, y), headers)
+                    if color == -1:
+                        log_message("Expired UserID", Fore.RED)
+                        break
 
-                if image[y][x] == ' ' or color == c[image[y][x]]:
-                    continue
+                    if image[y][x] == ' ' or color == c[image[y][x]]:
+                        continue
 
-                result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
-                if result == -1:
-                    log_message("Token Expired :(", Fore.RED)
-                    break
-                elif not result:
-                    break
+                    result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
+                    if result == -1:
+                        log_message("Token Expired :(", Fore.RED)
+                        break
+                    elif not result:
+                        break
 
-                # Simulasi pergerakan mouse dengan jeda acak
-                time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
+                    # Simulasi pergerakan mouse dengan jeda acak
+                    time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
 
-            except IndexError:
-                log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
+                except IndexError:
+                    log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
 
-    except requests.exceptions.RequestException as e:
-        log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
+            # Tunggu 30 menit sebelum memperbarui UserID
+            log_message("Menunggu 30 menit untuk memperbarui UserID.", Fore.YELLOW)
+            countdown_timer(WAIT)
+
+        except requests.exceptions.RequestException as e:
+            log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
 # Fungsi untuk menampilkan timer mundur
 def countdown_timer(duration):
@@ -200,5 +239,11 @@ def countdown_timer(duration):
         time.sleep(1)
         duration -= 1
 
-# Jalankan fungsi utama
-main()
+# Muat satu akun dari data.txt
+akun_list = load_accounts_from_file("data.txt")
+
+# Panggil main hanya dengan satu akun
+if akun_list:
+    main(akun_list[0])  # Memproses satu akun
+else:
+    log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
