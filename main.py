@@ -212,8 +212,8 @@ def process_accounts(accounts):
         main(account, account)
 
     # Tunggu 5 menit sebelum memulai ulang sesi
-    log_message("Menunggu 5 menit sebelum memulai sesi ulang...", Fore.WHITE)
-    countdown_timer(5 * 60)
+    log_message("Menunggu 10 menit sebelum memulai sesi ulang...", Fore.WHITE)
+    countdown_timer(10 * 60)
 
 # Muat akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
