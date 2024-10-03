@@ -5,21 +5,15 @@ import random
 from setproctitle import setproctitle
 from convert import get
 from colorama import Fore, Style, init
-from datetime import datetime, timedelta
+from datetime import datetime
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-import urllib.parse  # Untuk mendekode initData yang terenkode URL
 
 url = "https://notpx.app/api/v1"
 
 # WAKTU TUNGGU
 WAIT = 180 * 3
 DELAY = 1
-
-# DIMENSI GAMBAR
-WIDTH = 1000
-HEIGHT = 1000
-MAX_HEIGHT = 50
 
 # Inisialisasi colorama untuk output berwarna
 init(autoreset=True)
@@ -59,6 +53,14 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
 # Buat session dengan logika retry
 session = get_session_with_retries()
 
+# Fungsi untuk mengklaim sumber daya dari server
+def claim(header):
+    log_message("Auto Mengklaim Sumber Daya Dimulai.", Fore.CYAN)
+    try:
+        session.get(f"{url}/mining/claim", headers=header, timeout=10)
+    except requests.exceptions.RequestException as e:
+        log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
+
 # Fungsi untuk mendapatkan warna pixel dari server
 def get_color(pixel, header):
     try:
@@ -69,7 +71,6 @@ def get_color(pixel, header):
     except KeyError:
         return "#000000"
     except requests.exceptions.Timeout:
-        log_message("Permintaan waktu habis", Fore.RED)
         return "#000000"
     except requests.exceptions.ConnectionError as e:
         log_message(f"Kesalahan koneksi: {e}", Fore.RED)
@@ -77,14 +78,6 @@ def get_color(pixel, header):
     except requests.exceptions.RequestException as e:
         log_message(f"Permintaan gagal: {e}", Fore.RED)
         return "#000000"
-
-# Fungsi untuk mengklaim sumber daya dari server
-def claim(header):
-    log_message("Mengklaim sumber daya", Fore.CYAN)
-    try:
-        session.get(f"{url}/mining/claim", headers=header, timeout=10)
-    except requests.exceptions.RequestException as e:
-        log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
 
 # Fungsi untuk menghitung indeks pixel berdasarkan posisi x, y
 def get_pixel(x, y):
@@ -119,7 +112,8 @@ def paint(canvas_pos, color, header):
         if response.status_code == 401:
             return -1
 
-        log_message(f"Cat: {x},{y}", Fore.GREEN)
+        # Log informasi pixel yang dicat
+        log_message(f"Painter: 1 Pixel painted berhasil", Fore.GREEN)
         return True
     except requests.exceptions.RequestException as e:
         log_message(f"Gagal melukis: {e}", Fore.RED)
@@ -139,7 +133,7 @@ def fetch_mining_data(header, retries=3):
             if response.status_code == 200:
                 data = response.json()
                 user_balance = data.get('userBalance', 'Unknown')
-                log_message(f"Saldo: {user_balance}", Fore.MAGENTA)
+                log_message(f"Jumlah Pixel Di Akun Kamu: {user_balance}", Fore.MAGENTA)
                 return True
             elif response.status_code == 401:
                 log_message(f"Gagal mengambil data mining: 401 Unauthorized", Fore.RED)
@@ -154,6 +148,8 @@ def fetch_mining_data(header, retries=3):
 # Fungsi utama untuk melakukan proses melukis
 def main(auth, account):
     headers = {'authorization': auth}
+    
+    log_message("Akun NotPixel Berjalan.", Fore.BLUE)
 
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
@@ -180,7 +176,6 @@ def main(auth, account):
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
-                    log_message(f"Skip: {start_x + x - 1},{start_y + y - 1}", Fore.RED)
                     continue
 
                 result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
@@ -188,9 +183,7 @@ def main(auth, account):
                     log_message("DEAD :(", Fore.RED)
                     print(headers["authorization"])
                     break
-                elif result:
-                    continue
-                else:
+                elif not result:
                     break
 
             except IndexError:
@@ -199,25 +192,12 @@ def main(auth, account):
     except requests.exceptions.RequestException as e:
         log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
-# Fungsi untuk menampilkan timer mundur
-def countdown_timer(duration):
-    while duration > 0:
-        mins, secs = divmod(duration, 60)
-        timer = f'{int(mins):02}:{int(secs):02}'
-        print(f'Timer Mundur: {timer}', end="\r")
-        time.sleep(1)
-        duration -= 1
-
-# Fungsi untuk memproses semua akun dan logika tidur
+# Fungsi untuk memproses semua akun
 def process_accounts(accounts):
     for account in accounts:
         # Proses setiap akun satu per satu
         log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.BLUE)
         main(account, account)
-
-    # Tunggu 5 menit sebelum memulai ulang sesi
-    log_message("Menunggu 5 menit sebelum memulai sesi ulang...", Fore.YELLOW)
-    countdown_timer(5 * 60)
 
 # Muat akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
