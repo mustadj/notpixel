@@ -78,7 +78,7 @@ def get_color(pixel, header):
 
 # Fungsi untuk mengklaim sumber daya dari server
 def claim(header):
-    log_message("Auto Mengklaim Sumber Daya Dimulai.", Fore.CYAN)
+    log_message("Auto claiming started.", Fore.CYAN)
     try:
         session.get(f"{url}/mining/claim", headers=header, timeout=10)
     except requests.exceptions.RequestException as e:
@@ -112,13 +112,13 @@ def paint(canvas_pos, color, header):
         x, y = get_pos(canvas_pos, 1000)
 
         if response.status_code == 400:
-            log_message("Energi habis", Fore.RED)
+            log_message("Painter: No charge available. Sleeping for 5 minutes.", Fore.RED)
             return False
         if response.status_code == 401:
             return -1
 
-        # Log informasi pixel yang dicat
-        log_message(f"Painter: 1 Pixel painted berhasil", Fore.GREEN)
+        # Log informasi pixel yang dicat dengan warna hijau muda
+        log_message(f"Painter: 1 Pixel painted successfully.", Fore.LIGHTGREEN_EX)
         return True
     except requests.exceptions.RequestException as e:
         log_message(f"Gagal melukis: {e}", Fore.RED)
@@ -138,7 +138,7 @@ def fetch_mining_data(header, retries=3):
             if response.status_code == 200:
                 data = response.json()
                 user_balance = data.get('userBalance', 'Unknown')
-                log_message(f"Jumlah Pixel Di Akun Kamu: {user_balance}", Fore.MAGENTA)
+                log_message(f"Jumlah Pixel: {user_balance}", Fore.MAGENTA)
                 return True
             elif response.status_code == 401:
                 log_message(f"Gagal mengambil data mining: 401 Unauthorized", Fore.RED)
@@ -154,7 +154,7 @@ def fetch_mining_data(header, retries=3):
 def main(auth, account):
     headers = {'authorization': auth}
 
-    log_message("Akun NotPixel Berjalan.", Fore.BLUE)
+    log_message("Auto painting started.", Fore.BLUE)
 
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
