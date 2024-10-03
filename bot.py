@@ -230,14 +230,19 @@ def main(auth, account):
         except requests.exceptions.RequestException as e:
             log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
-# Fungsi untuk menampilkan timer mundur
+# Fungsi untuk menampilkan timer mundur dengan kursor dipindahkan ke belakang detik terakhir
 def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
-        print(f'Timer Mundur: {timer}', end="\r")
+
+        # Menampilkan timer dan memindahkan kursor tepat setelah angka terakhir
+        print(f'Timer Mundur: {timer}', end="\033[1D")  # \033[1D untuk memindahkan kursor satu karakter ke kiri
+
         time.sleep(1)
         duration -= 1
+    
+    # Tampilkan pesan ketika countdown selesai
     print("Countdown selesai. Melanjutkan proses...")
 
 # Muat satu akun dari data.txt
