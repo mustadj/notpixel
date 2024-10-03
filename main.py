@@ -16,9 +16,6 @@ url = "https://notpx.app/api/v1"
 init(autoreset=True)
 setproctitle("notpixel")
 
-# Ambil konfigurasi gambar
-image = get("")
-
 # Fungsi untuk mencatat pesan dengan timestamp
 def log_message(message, color=Style.RESET_ALL):
     print(f"{color}{message}{Style.RESET_ALL}")
@@ -39,6 +36,24 @@ def extract_user_id(account_data):
     except (IndexError, json.JSONDecodeError):
         log_message(f"Format data akun tidak sesuai: {account_data}", Fore.RED)
         return None
+
+# Fungsi untuk membuat session dengan retry
+def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504)):
+    session = requests.Session()
+    retry = Retry(
+        total=retries,
+        read=retries,
+        connect=retries,
+        backoff_factor=backoff_factor,
+        status_forcelist=status_forcelist,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
+
+# Inisialisasi session
+session = get_session_with_retries()
 
 # Fungsi untuk mendapatkan token baru (sesuai format yang diharapkan oleh API)
 def request_new_token(account):
