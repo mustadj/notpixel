@@ -137,7 +137,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f"Userid dari data.txt : 401 Unauthorized", Fore.RED)
+                log_message(f"401 Unauthorized", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -162,18 +162,22 @@ def request_new_token(account):
         return None
 
 # Fungsi utama untuk melakukan proses melukis
-def main(auth, account):
-    headers = {'authorization': auth}
+def main(account, auth=None):
+    if not auth:
+        auth = request_new_token(account)
+        if not auth:
+            log_message("Gagal login", Fore.RED)
+            return
 
+    headers = {'authorization': auth}
     log_message("Auto painting dimulai.", Fore.WHITE)
 
     try:
-        # Cek data mining (saldo) tanpa mengulang login
         if not fetch_mining_data(headers):
-            log_message("Token Dari data .txt Kedaluwarsa :(", Fore.RED)
-            new_auth = request_new_token(account)  # Mendapatkan token baru jika token kedaluwarsa
+            log_message("Token kadaluarsa, meminta token baru", Fore.RED)
+            new_auth = request_new_token(account)
             if new_auth:
-                headers['authorization'] = new_auth  # Perbarui token
+                headers['authorization'] = new_auth  # Update token
                 log_message("Token diperbarui.", Fore.GREEN)
             else:
                 log_message("Gagal mendapatkan token baru.", Fore.RED)
@@ -188,12 +192,12 @@ def main(auth, account):
 
         for pos_image in order:
             x, y = get_pos(pos_image, len(image[0]))
-            time.sleep(random.uniform(0.05, 0.2))  # Jeda acak di antara permintaan
+            time.sleep(random.uniform(0.05, 0.2))
 
             try:
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
-                    log_message("Expired Bang", Fore.RED)
+                    log_message("Token kadaluarsa.", Fore.RED)
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -206,7 +210,7 @@ def main(auth, account):
                 elif not result:
                     break
 
-                time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
+                time.sleep(random.uniform(0.1, 0.3))
 
             except IndexError:
                 log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
@@ -227,9 +231,9 @@ def countdown_timer(duration):
 akun_list = load_accounts_from_file("data.txt")
 
 # Loop terus menerus untuk memproses akun
+tokens = {}
 while True:
     for account in akun_list:
-        main(account, account)
-
-    # Tunggu 10 menit untuk sesi berikutnya, namun sesi berjalan tanpa harus mengulang login
+        token = tokens.get(account, None)
+        main(account, token)
     countdown_timer(10 * 60)
