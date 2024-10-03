@@ -3,7 +3,7 @@ import json
 import time
 import random
 from setproctitle import setproctitle
-from convert import get
+from getimage import get
 from colorama import Fore, Style, init
 from datetime import datetime
 from requests.adapters import HTTPAdapter
