@@ -60,9 +60,6 @@ session = get_session_with_retries()
 # Fungsi untuk mendapatkan warna pixel dari server
 def get_color(pixel, header):
     try:
-        print("Mengirim header berikut untuk get_color:")
-        print(header)
-        
         response = session.get(f"{url}/image/get/{str(pixel)}", headers=header, timeout=10)
         if response.status_code == 401:
             return -1
@@ -82,9 +79,6 @@ def get_color(pixel, header):
 def claim(header):
     log_message("Auto claiming started.", Fore.WHITE)
     try:
-        print("Mengirim header berikut untuk klaim:")
-        print(header)
-        
         session.get(f"{url}/mining/claim", headers=header, timeout=10)
     except requests.exceptions.RequestException as e:
         log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
@@ -113,9 +107,6 @@ def paint(canvas_pos, color, header):
     }
 
     try:
-        print("Mengirim header berikut untuk paint:")
-        print(header)
-        
         response = session.post(f"{url}/repaint/start", data=json.dumps(data), headers=header, timeout=10)
         if response.status_code == 400:
             log_message("Painter: No charge available. Sleeping for 10 minutes.", Fore.RED)
@@ -138,10 +129,8 @@ def load_token_from_file(filename):
 
 # Fungsi utama untuk melakukan proses melukis
 def main(token):
-    # Di sini kita kirimkan token sebagai bagian dari custom header
     headers = {
-        'Authorization': token,  # Coba token ini sebagai Authorization header
-        'TGA-Batch-Requests': token,  # Juga coba sebagai TGA-Batch-Requests
+        'tga-auth-token': token,  # Gunakan token tga-auth-token
     }
 
     log_message("Auto painting started.", Fore.WHITE)
@@ -162,7 +151,7 @@ def main(token):
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
                     log_message("Expired Bang", Fore.RED)
-                    print(headers["TGA-Batch-Requests"])
+                    print(headers["tga-auth-token"])
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -171,7 +160,7 @@ def main(token):
                 result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                 if result == -1:
                     log_message("Token Expired :(", Fore.RED)
-                    print(headers["TGA-Batch-Requests"])
+                    print(headers["tga-auth-token"])
                     break
                 elif not result:
                     break
