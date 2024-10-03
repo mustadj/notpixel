@@ -135,6 +135,26 @@ def load_accounts_from_file(filename):
         catat_pesan("File tidak ditemukan, pastikan data.txt ada.", Fore.RED)
         return []
 
+# Fungsi untuk mengambil data mining
+def fetch_mining_data(header, retries=3):
+    for attempt in range(retries):
+        try:
+            response = sesi.get(f"{url}/mining/status", headers=header, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                user_balance = data.get('userBalance', 'Unknown')
+                catat_pesan(f"Saldo: {user_balance}", Fore.MAGENTA)
+                return True
+            elif response.status_code == 401:
+                catat_pesan(f"Gagal mengambil data mining: 401 Unauthorized", Fore.RED)
+                return False
+            else:
+                catat_pesan(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
+        except requests.exceptions.RequestException as e:
+            catat_pesan(f"Kesalahan saat mengambil data mining: {e}", Fore.RED)
+        time.sleep(1)  # Tunggu sedikit sebelum mencoba lagi
+    return False
+
 # Fungsi utama untuk proses akun
 def proses_akun(akun):
     headers = {'authorization': akun}
