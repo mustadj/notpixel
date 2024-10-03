@@ -1,4 +1,3 @@
-
 import PIL  # Mempertahankan import PIL jika digunakan di tempat lain dalam proyek
 import random
 
