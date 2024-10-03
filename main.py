@@ -15,6 +15,11 @@ url = "https://notpx.app/api/v1"
 WAIT = 180 * 3
 DELAY = 1
 
+# DIMENSI GAMBAR
+WIDTH = 1000
+HEIGHT = 1000
+MAX_HEIGHT = 50
+
 # Inisialisasi colorama untuk output berwarna
 init(autoreset=True)
 
@@ -53,14 +58,6 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
 # Buat session dengan logika retry
 session = get_session_with_retries()
 
-# Fungsi untuk mengklaim sumber daya dari server
-def claim(header):
-    log_message("Auto Mengklaim Sumber Daya Dimulai.", Fore.CYAN)
-    try:
-        session.get(f"{url}/mining/claim", headers=header, timeout=10)
-    except requests.exceptions.RequestException as e:
-        log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
-
 # Fungsi untuk mendapatkan warna pixel dari server
 def get_color(pixel, header):
     try:
@@ -78,6 +75,14 @@ def get_color(pixel, header):
     except requests.exceptions.RequestException as e:
         log_message(f"Permintaan gagal: {e}", Fore.RED)
         return "#000000"
+
+# Fungsi untuk mengklaim sumber daya dari server
+def claim(header):
+    log_message("Auto Mengklaim Sumber Daya Dimulai.", Fore.CYAN)
+    try:
+        session.get(f"{url}/mining/claim", headers=header, timeout=10)
+    except requests.exceptions.RequestException as e:
+        log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
 
 # Fungsi untuk menghitung indeks pixel berdasarkan posisi x, y
 def get_pixel(x, y):
@@ -148,7 +153,7 @@ def fetch_mining_data(header, retries=3):
 # Fungsi utama untuk melakukan proses melukis
 def main(auth, account):
     headers = {'authorization': auth}
-    
+
     log_message("Akun NotPixel Berjalan.", Fore.BLUE)
 
     try:
@@ -192,12 +197,25 @@ def main(auth, account):
     except requests.exceptions.RequestException as e:
         log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
-# Fungsi untuk memproses semua akun
+# Fungsi untuk menampilkan timer mundur
+def countdown_timer(duration):
+    while duration > 0:
+        mins, secs = divmod(duration, 60)
+        timer = f'{int(mins):02}:{int(secs):02}'
+        print(f'Timer Mundur: {timer}', end="\r")
+        time.sleep(1)
+        duration -= 1
+
+# Fungsi untuk memproses semua akun dan logika tidur
 def process_accounts(accounts):
     for account in accounts:
         # Proses setiap akun satu per satu
         log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.BLUE)
         main(account, account)
+
+    # Tunggu 5 menit sebelum memulai ulang sesi
+    log_message("Menunggu 5 menit sebelum memulai sesi ulang...", Fore.YELLOW)
+    countdown_timer(5 * 60)
 
 # Muat akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
