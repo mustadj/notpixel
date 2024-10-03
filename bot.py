@@ -111,6 +111,7 @@ def paint(canvas_pos, color, header):
         if response.status_code == 400:
             log_message("Painter: No charge available. Sleeping for 10 minutes.", Fore.RED)
             countdown_timer(10 * 60)  # Tambahkan countdown timer 10 menit di sini
+            log_message("Timer selesai. Melanjutkan eksekusi.", Fore.YELLOW)
             return False
         if response.status_code == 401:
             return -1
@@ -151,7 +152,6 @@ def fetch_mining_data(header, retries=3):
 def request_new_token(account):
     log_message("Meminta token baru...", Fore.YELLOW)
     try:
-        # Ganti dengan endpoint yang sesuai untuk mendapatkan token baru
         response = session.post(f"{url}/login", data={"account": account}, timeout=10)
         if response.status_code == 200:
             new_token = response.json().get('token')
@@ -170,7 +170,6 @@ def main(auth, account):
     log_message("Auto painting started.", Fore.WHITE)
 
     try:
-        # Ambil data mining (saldo) sebelum mengklaim sumber daya
         if not fetch_mining_data(headers):
             log_message("Token Dari data.txt Expired :(", Fore.RED)
             # Mendapatkan token baru
@@ -228,6 +227,8 @@ def countdown_timer(duration):
         print(f'Timer Mundur: {timer}', end="\r")
         time.sleep(1)
         duration -= 1
+    # Tambahkan pesan setelah countdown selesai untuk memastikan proses lanjut
+    print("Countdown selesai. Melanjutkan proses...")
 
 # Muat satu akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
