@@ -228,20 +228,30 @@ def countdown_timer(duration):
         time.sleep(1)
         duration -= 1
 
-# Fungsi untuk memproses semua akun dan logika tidur
-def process_accounts(accounts):
-    for account in accounts:
-        # Proses setiap akun satu per satu
-        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
-        main(account, account)
+# Fungsi untuk memproses akun tanpa memulai ulang sesi
+def process_accounts_once(accounts):
+    token_map = {}
 
-    # Tunggu 5 menit sebelum memulai ulang sesi
-    log_message("Menunggu 10 menit sebelum memulai sesi ulang...", Fore.WHITE)
-    countdown_timer(10 * 60)
+    for account in accounts:
+        # Proses login sekali untuk mendapatkan token
+        if account not in token_map:
+            log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
+            new_token = request_new_token(account)
+            if new_token:
+                token_map[account] = new_token
+            else:
+                log_message("Gagal login dengan akun ini, lanjutkan ke akun berikutnya.", Fore.RED)
+                continue
+
+        # Gunakan token yang sudah disimpan
+        main(token_map[account], account)
 
 # Muat akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
 
-# Loop terus menerus untuk memproses akun
+# Loop terus menerus untuk memproses akun tanpa memulai ulang sesi
+process_accounts_once(akun_list)
+
 while True:
-    process_accounts(akun_list)
+    log_message("Sesi painting berlanjut tanpa login ulang...", Fore.WHITE)
+    countdown_timer(10 * 60)
