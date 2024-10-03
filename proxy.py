@@ -5,18 +5,17 @@ import random
 from setproctitle import setproctitle
 from convert import get
 from colorama import Fore, Style, init
-from datetime import datetime, timedelta
+from datetime import datetime
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-import urllib.parse  # Untuk decoding URL-encoded initData
 
 url = "https://notpx.app/api/v1"
 
-# Konfigurasi waktu tunggu
+# WAKTU TUNGGU
 WAIT = 180 * 3
 DELAY = 1
 
-# Ukuran gambar
+# DIMENSI GAMBAR
 WIDTH = 1000
 HEIGHT = 1000
 MAX_HEIGHT = 50
@@ -29,7 +28,7 @@ setproctitle("notpixel")
 # Ambil konfigurasi gambar
 image = get("")
 
-# Warna pixel
+# Definisikan warna untuk representasi pixel
 c = {
     '#': "#000000",
     '.': "#3690EA",
@@ -37,64 +36,62 @@ c = {
 }
 
 # Fungsi untuk mencatat pesan dengan timestamp
-def catat_pesan(pesan, warna=Style.RESET_ALL):
-    waktu_sekarang = datetime.now().strftime("[%H:%M:%S]")
-    print(f"{Fore.LIGHTBLACK_EX}{waktu_sekarang}{Style.RESET_ALL} {warna}{pesan}{Style.RESET_ALL}")
+def log_message(message, color=Style.RESET_ALL):
+    print(f"{color}{message}{Style.RESET_ALL}")
 
-# Fungsi untuk inisialisasi sesi request dengan retry
-def buat_sesi_dengan_retry(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504)):
-    sesi = requests.Session()
+# Fungsi untuk menginisialisasi session requests dengan logika retry
+def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504)):
+    session = requests.Session()
     retry = Retry(
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=backoff_factor,
+        backoff_factor=0.3,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
-    sesi.mount("http://", adapter)
-    sesi.mount("https://", adapter)
-    return sesi
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    return session
 
-# Buat sesi dengan retry
-sesi = buat_sesi_dengan_retry()
+# Buat session dengan logika retry
+session = get_session_with_retries()
 
 # Fungsi untuk mendapatkan warna pixel dari server
-def get_warna(pixel, header):
+def get_color(pixel, header):
     try:
-        response = sesi.get(f"{url}/image/get/{str(pixel)}", headers=header, timeout=10)
+        response = session.get(f"{url}/image/get/{str(pixel)}", headers=header, timeout=10)
         if response.status_code == 401:
             return -1
         return response.json()['pixel']['color']
     except KeyError:
         return "#000000"
     except requests.exceptions.Timeout:
-        catat_pesan("Permintaan timeout", Fore.RED)
         return "#000000"
     except requests.exceptions.ConnectionError as e:
-        catat_pesan(f"Kesalahan koneksi: {e}", Fore.RED)
+        log_message(f"Kesalahan koneksi: {e}", Fore.RED)
         return "#000000"
     except requests.exceptions.RequestException as e:
-        catat_pesan(f"Permintaan gagal: {e}", Fore.RED)
+        log_message(f"Permintaan gagal: {e}", Fore.RED)
         return "#000000"
 
-# Fungsi untuk klaim sumber daya dari server
-def klaim(header):
-    catat_pesan("Mengklaim sumber daya", Fore.CYAN)
+# Fungsi untuk mengklaim sumber daya dari server
+def claim(header):
+    log_message("Auto claiming started.", Fore.WHITE)
     try:
-        sesi.get(f"{url}/mining/claim", headers=header, timeout=10)
+        session.get(f"{url}/mining/claim", headers=header, timeout=10)
     except requests.exceptions.RequestException as e:
-        catat_pesan(f"Gagal klaim sumber daya: {e}", Fore.RED)
+        log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
 
-# Fungsi untuk mendapatkan pixel berdasarkan koordinat x, y
+# Fungsi untuk menghitung indeks pixel berdasarkan posisi x, y
 def get_pixel(x, y):
     return y * 1000 + x + 1
 
-# Fungsi untuk mendapatkan posisi x, y berdasarkan pixel
+# Fungsi untuk mendapatkan posisi x, y dari indeks pixel
 def get_pos(pixel, size_x):
     return pixel % size_x, pixel // size_x
 
-# Fungsi untuk mengambil posisi canvas berdasarkan koordinat
+# Fungsi untuk mendapatkan indeks pixel berdasarkan posisi canvas
 def get_canvas_pos(x, y):
     return get_pixel(start_x + x - 1, start_y + y - 1)
 
@@ -102,122 +99,149 @@ def get_canvas_pos(x, y):
 start_x = 920
 start_y = 386
 
-# Fungsi untuk melukis pixel
-def paint(canvas_pos, warna, header):
+# Fungsi untuk melakukan aksi melukis
+def paint(canvas_pos, color, header):
     data = {
         "pixelId": canvas_pos,
-        "newColor": warna
+        "newColor": color
     }
 
     try:
-        response = sesi.post(f"{url}/repaint/start", data=json.dumps(data), headers=header, timeout=10)
-        x, y = get_pos(canvas_pos, 1000)
-
+        response = session.post(f"{url}/repaint/start", data=json.dumps(data), headers=header, timeout=10)
         if response.status_code == 400:
-            catat_pesan("Kehabisan energi", Fore.RED)
+            log_message("Painter: No charge available. Sleeping for 5 minutes.", Fore.RED)
             return False
         if response.status_code == 401:
             return -1
 
-        catat_pesan(f"Melukis: {x},{y}", Fore.GREEN)
+        log_message(f"Painter: 1 Pixel painted successfully.", Fore.LIGHTGREEN_EX)
         return True
     except requests.exceptions.RequestException as e:
-        catat_pesan(f"Gagal melukis: {e}", Fore.RED)
+        log_message(f"Gagal melukis: {e}", Fore.RED)
         return False
 
-# Fungsi untuk memperbarui token otorisasi
-def refresh_token():
+# Fungsi untuk memuat akun dari data.txt
+def load_accounts_from_file(filename):
+    with open(filename, 'r') as file:
+        accounts = [f"initData {line.strip()}" for line in file if line.strip()]
+    return accounts
+
+# Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
+def fetch_mining_data(header, retries=3):
+    for attempt in range(retries):
+        try:
+            response = session.get(f"{url}/mining/status", headers=header, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                user_balance = data.get('userBalance', 'Unknown')
+                log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
+                return True
+            elif response.status_code == 401:
+                log_message(f" Userid dari data.txt : 401 Unauthorized", Fore.RED)
+                return False
+            else:
+                log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
+        except requests.exceptions.RequestException as e:
+            log_message(f"Kesalahan saat mengambil data mining: {e}", Fore.RED)
+        time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
+    return False
+
+# Fungsi untuk mendapatkan token baru
+def request_new_token(account):
+    log_message("Meminta token baru...", Fore.YELLOW)
     try:
-        response = sesi.post(f"{url}/token/refresh")
+        # Ganti dengan endpoint yang sesuai untuk mendapatkan token baru
+        response = session.post(f"{url}/login", data={"account": account}, timeout=10)
         if response.status_code == 200:
             new_token = response.json().get('token')
             return new_token
         else:
-            catat_pesan(f"Gagal memperbarui token: {response.status_code}", Fore.RED)
+            log_message(f"Gagal mendapatkan token baru: {response.status_code}", Fore.RED)
             return None
     except requests.exceptions.RequestException as e:
-        catat_pesan(f"Kesalahan saat memperbarui token: {e}", Fore.RED)
+        log_message(f"Kesalahan saat meminta token baru: {e}", Fore.RED)
         return None
 
-# Fungsi untuk mengecek apakah token masih valid
-def cek_token_valid(header):
+# Fungsi utama untuk melakukan proses melukis
+def main(auth, account):
+    headers = {'authorization': auth}
+
+    log_message("Auto painting started.", Fore.WHITE)
+
     try:
-        response = sesi.get(f"{url}/token/validate", headers=header)
-        if response.status_code == 200:
-            return True
-        elif response.status_code == 401:
-            catat_pesan("Token tidak valid, memperbarui token...", Fore.YELLOW)
-            new_token = refresh_token()
-            if new_token:
-                header['authorization'] = new_token
-                return True
+        # Ambil data mining (saldo) sebelum mengklaim sumber daya
+        if not fetch_mining_data(headers):
+            log_message("Token Dari data .txt Expired :(", Fore.RED)
+            # Mendapatkan token baru
+            new_auth = request_new_token(account)  # Mendapatkan token baru
+            if new_auth:
+                headers['authorization'] = new_auth  # Perbarui header dengan token baru
+                log_message("Token diperbarui.", Fore.GREEN)
             else:
-                return False
-        else:
-            catat_pesan(f"Gagal mengecek token: {response.status_code}", Fore.RED)
-            return False
+                log_message("Gagal mendapatkan token baru.", Fore.RED)
+                return
+
+        # Klaim sumber daya
+        claim(headers)
+
+        size = len(image) * len(image[0])
+        order = [i for i in range(size)]
+        random.shuffle(order)
+
+        for pos_image in order:
+            x, y = get_pos(pos_image, len(image[0]))
+            time.sleep(random.uniform(0.05, 0.2))  # Jeda acak di antara permintaan
+
+            try:
+                color = get_color(get_canvas_pos(x, y), headers)
+                if color == -1:
+                    log_message("Expired Bang", Fore.RED)
+                    print(headers["authorization"])
+                    break
+
+                if image[y][x] == ' ' or color == c[image[y][x]]:
+                    continue
+
+                result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
+                if result == -1:
+                    log_message("DEAD :(", Fore.RED)
+                    print(headers["authorization"])
+                    break
+                elif not result:
+                    break
+
+                # Simulasi pergerakan mouse dengan jeda acak
+                time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
+
+            except IndexError:
+                log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
+
     except requests.exceptions.RequestException as e:
-        catat_pesan(f"Kesalahan saat mengecek token: {e}", Fore.RED)
-        return False
+        log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
-# Fungsi utama untuk proses akun
-def proses_akun(akun):
-    headers = {'authorization': akun}
+# Fungsi untuk menampilkan timer mundur
+def countdown_timer(duration):
+    while duration > 0:
+        mins, secs = divmod(duration, 60)
+        timer = f'{int(mins):02}:{int(secs):02}'
+        print(f'Timer Mundur: {timer}', end="\r")
+        time.sleep(1)
+        duration -= 1
 
-    # Cek validitas token sebelum memulai sesi
-    if not cek_token_valid(headers):
-        catat_pesan("Gagal memperbarui token, menghentikan proses.", Fore.RED)
-        return
+# Fungsi untuk memproses semua akun dan logika tidur
+def process_accounts(accounts):
+    for account in accounts:
+        # Proses setiap akun satu per satu
+        log_message(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.WHITE)
+        main(account, account)
 
-    # Ambil data mining
-    if not fetch_mining_data(headers):
-        catat_pesan("DEAD :(", Fore.RED)
-        print(headers["authorization"])
-        return
+    # Tunggu 5 menit sebelum memulai ulang sesi
+    log_message("Menunggu 10 menit sebelum memulai sesi ulang...", Fore.WHITE)
+    countdown_timer(10 * 60)
 
-    # Klaim sumber daya
-    klaim(headers)
+# Muat akun dari data.txt
+akun_list = load_accounts_from_file("data.txt")
 
-    size = len(image) * len(image[0])
-    order = [i for i in range(size)]
-    random.shuffle(order)
-
-    for pos_image in order:
-        x, y = get_pos(pos_image, len(image[0]))
-        time.sleep(0.05 + random.uniform(0.01, 0.1))
-        try:
-            warna = get_warna(get_canvas_pos(x, y), headers)
-            if warna == -1:
-                catat_pesan("DEAD :(", Fore.RED)
-                print(headers["authorization"])
-                break
-
-            if image[y][x] == ' ' or warna == c[image[y][x]]:
-                catat_pesan(f"Skip: {start_x + x - 1},{start_y + y - 1}", Fore.RED)
-                continue
-
-            hasil = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
-            if hasil == -1:
-                catat_pesan("DEAD :(", Fore.RED)
-                print(headers["authorization"])
-                break
-            elif hasil:
-                continue
-            else:
-                break
-
-        except IndexError:
-            catat_pesan(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
-
-# Fungsi untuk proses akun secara berulang
-def proses_semua_akun(akun_list):
-    for akun in akun_list:
-        catat_pesan(f"--- MEMULAI SESI UNTUK AKUN ---", Fore.BLUE)
-        proses_akun(akun)
-
-# Fungsi utama
-if __name__ == "__main__":
-    akun_list = load_accounts_from_file("data.txt")
-    while True:
-        proses_semua_akun(akun_list)
-        time.sleep(5 * 60)  # Tunggu 50 menit sebelum memulai ulang sesi
+# Loop terus menerus untuk memproses akun
+while True:
+    process_accounts(akun_list)
