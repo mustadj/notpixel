@@ -129,7 +129,10 @@ def load_token_from_file(filename):
 
 # Fungsi utama untuk melakukan proses melukis
 def main(token):
-    headers = {'Authorization': f'Bearer {token}'}  # Gunakan token sebagai Bearer token
+    # Di sini kita kirimkan token sebagai bagian dari custom header, bukan Bearer
+    headers = {
+        'TGA-Batch-Requests': token,  # Sesuaikan header dengan token TGA
+    }
 
     log_message("Auto painting started.", Fore.WHITE)
 
@@ -149,7 +152,7 @@ def main(token):
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
                     log_message("Expired Bang", Fore.RED)
-                    print(headers["Authorization"])
+                    print(headers["TGA-Batch-Requests"])
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -158,7 +161,7 @@ def main(token):
                 result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                 if result == -1:
                     log_message("Token Expired :(", Fore.RED)
-                    print(headers["Authorization"])
+                    print(headers["TGA-Batch-Requests"])
                     break
                 elif not result:
                     break
