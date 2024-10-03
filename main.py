@@ -121,12 +121,6 @@ def paint(canvas_pos, color, header):
         log_message(f"Gagal melukis: {e}", Fore.RED)
         return False
 
-# Fungsi untuk memuat akun dari data.txt
-def load_accounts_from_file(filename):
-    with open(filename, 'r') as file:
-        accounts = [f"initData {line.strip()}" for line in file if line.strip()]
-    return accounts
-
 # Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
 def fetch_mining_data(header, retries=3):
     for attempt in range(retries):
@@ -147,40 +141,19 @@ def fetch_mining_data(header, retries=3):
         time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
     return False
 
-# Fungsi untuk mendapatkan token baru
-def request_new_token(account):
-    log_message("Meminta token baru...", Fore.YELLOW)
-    try:
-        # Ganti dengan endpoint yang sesuai untuk mendapatkan token baru
-        response = session.post(f"{url}/login", data={"account": account}, timeout=10)
-        if response.status_code == 200:
-            new_token = response.json().get('token')
-            return new_token
-        else:
-            log_message(f"Gagal mendapatkan token baru: {response.status_code}", Fore.RED)
-            return None
-    except requests.exceptions.RequestException as e:
-        log_message(f"Kesalahan saat meminta token baru: {e}", Fore.RED)
-        return None
-
 # Fungsi utama untuk melakukan proses melukis
-def main(auth, account):
-    headers = {'authorization': auth}
+def main():
+    # Masukkan token langsung di sini
+    token = 'Bearer eyJhcHBfbmFtZSI6Ik5vdFBpeGVsIiwiYXBwX3VybCI6Imh0dHBzOi8vdC5tZS9ub3RwaXhlbC9hcHAiLCJhcHBfZG9tYWluIjoiaHR0cHM6Ly9hcHAubm90cHguYXBwIn0=!qE41yKlb/OkRyaVhhgdePSZm5Nk7nqsUnsOXDWqNAYE'
+    headers = {'Authorization': token}
 
     log_message("Auto painting started.", Fore.WHITE)
 
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
         if not fetch_mining_data(headers):
-            log_message("Token Dari data.txt Expired :(", Fore.RED)
-            # Mendapatkan token baru
-            new_auth = request_new_token(account)  # Mendapatkan token baru
-            if new_auth:
-                headers['authorization'] = new_auth  # Perbarui header dengan token baru
-                log_message("Token diperbarui.", Fore.GREEN)
-            else:
-                log_message("Gagal mendapatkan token baru.", Fore.RED)
-                return
+            log_message("Token Expired :(", Fore.RED)
+            return
 
         # Klaim sumber daya
         claim(headers)
@@ -196,8 +169,7 @@ def main(auth, account):
             try:
                 color = get_color(get_canvas_pos(x, y), headers)
                 if color == -1:
-                    log_message("Expired Bang", Fore.RED)
-                    print(headers["authorization"])
+                    log_message("Expired Token", Fore.RED)
                     break
 
                 if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -206,7 +178,6 @@ def main(auth, account):
                 result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                 if result == -1:
                     log_message("Token Expired :(", Fore.RED)
-                    print(headers["authorization"])
                     break
                 elif not result:
                     break
@@ -229,11 +200,5 @@ def countdown_timer(duration):
         time.sleep(1)
         duration -= 1
 
-# Muat satu akun dari data.txt
-akun_list = load_accounts_from_file("data.txt")
-
-# Panggil main hanya dengan satu akun
-if akun_list:
-    main(akun_list[0], akun_list[0])  # Memproses satu akun
-else:
-    log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
+# Jalankan fungsi utama
+main()
