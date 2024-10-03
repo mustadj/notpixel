@@ -182,7 +182,7 @@ def main(auth, account):
                     log_message("Token tidak valid, berhenti melukis.", Fore.RED)
                     break
 
-                if image[y][x] == ' ' atau color == c[image[y][x]]:
+                if image[y][x] == ' ' or color == c[image[y][x]]:
                     continue
 
                 result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
