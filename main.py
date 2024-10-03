@@ -240,4 +240,7 @@ def process_accounts(accounts):
 akun_list = load_accounts_from_file("data.txt")
 
 # Loop terus menerus untuk memproses akun
-while True
+while TrueHere's the continuation of the script that processes each account and refreshes the session without needing to rely on **data.txt** after the first login.
+
+```python
+    process_accounts(akun_list)
