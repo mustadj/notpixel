@@ -223,14 +223,15 @@ def main(auth, account):
 def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
-        timer = f'{int(mins):02}:{int(secs):02}'
-        print(f'Timer Mundur: {timer}', end="\r")
+        timer = f'Timer Mundur: {int(mins):02}:{int(secs):02}'
+        print(f'{timer}', end="\r")
         time.sleep(1)
         duration -= 1
+    print("\nTimer selesai.")
 
 # Fungsi untuk memproses satu akun
 def process_single_account(account):
-    log_message(f"--- MEMULAI SESI UNTUK AKUN {account} ---", Fore.WHITE)
+    log_message(f"--- MEMULAI SESI UNTUK AKUN {account[:30]} ---", Fore.WHITE)  # Cetak sebagian dari akun untuk menghindari panjang
     main(account, account)
 
 # Muat akun dari data.txt
@@ -241,3 +242,7 @@ if akun_list:
     process_single_account(akun_list[0])
 else:
     log_message("Tidak ada akun yang tersedia di file.", Fore.RED)
+
+# Tunggu 10 menit setelah proses akun selesai
+log_message("Menunggu 10 menit sebelum memulai sesi ulang...", Fore.WHITE)
+countdown_timer(10 * 60)
