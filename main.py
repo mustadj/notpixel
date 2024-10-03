@@ -131,7 +131,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f" Userid dari data.txt : 401 Unauthorized", Fore.RED)
+                log_message(f"Userid dari data.txt : 401 Unauthorized", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -165,7 +165,7 @@ def main(auth, account):
     try:
         # Ambil data mining (saldo) sebelum mengklaim sumber daya
         if not fetch_mining_data(headers):
-            log_message("Token Dari data .txt Expired :(", Fore.RED)
+            log_message("Token Dari data.txt Expired :(", Fore.RED)
             # Mendapatkan token baru
             new_auth = request_new_token(account)  # Mendapatkan token baru
             if new_auth:
