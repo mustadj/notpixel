@@ -53,13 +53,13 @@ def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
-        # Gunakan \r untuk kembali ke awal baris dan ganti seluruh teks
-        sys.stdout.write(f"\rWaktu Tunggu Sebelum Mengulang Eksekusi: {timer}   ")  # Pastikan teks tetap di satu baris
+        sys.stdout.write(f"\rWaktu Tunggu Sebelum Mengulang Eksekusi: {timer}   ")
         sys.stdout.flush()
         time.sleep(1)
         duration -= 1
-    # Setelah selesai, kosongkan baris
+    # Setelah timer selesai, pindahkan kursor ke baris baru
     sys.stdout.write("\r" + " " * 50 + "\r")
+    sys.stdout.write("\n")  # Pindahkan kursor ke baris baru
     sys.stdout.flush()
 
 # Fungsi untuk menginisialisasi session requests dengan logika retry
