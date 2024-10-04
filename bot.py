@@ -117,36 +117,6 @@ def get_color(pixel, header):
         log_message(f"Permintaan gagal: {e}", Fore.RED)
         return "#000000"
 
-# Fungsi untuk mendeteksi apakah queryid kadaluarsa
-def is_queryid_expired():
-    try:
-        response = session.get(f"{url}/check_session", timeout=10)  # Periksa validitas queryid
-        if response.status_code == 401:  # Jika queryid tidak valid (Unauthorized)
-            return True
-    except requests.RequestException:
-        return True
-    return False
-
-# Fungsi untuk melakukan login ulang jika queryid kadaluarsa
-def auto_login(account):
-    log_message("Melakukan login ulang untuk mendapatkan queryid baru...", Fore.YELLOW)
-    try:
-        response = session.post(f"{url}/login", data={"account": account}, timeout=10)
-        if response.status_code == 200:
-            new_queryid = response.json().get('queryid')
-            return new_queryid
-        else:
-            log_message(f"Gagal login ulang: {response.status_code}", Fore.RED)
-            return None
-    except requests.exceptions.RequestException as e:
-        log_message(f"Kesalahan saat login ulang: {e}", Fore.RED)
-        return None
-
-# Fungsi untuk menyimpan queryid baru ke data.txt
-def save_queryid_to_file(queryid):
-    with open("data.txt", "w") as file:
-        file.write(queryid)
-
 # Fungsi untuk mengklaim sumber daya dari server
 def claim(header):
     log_message("Auto claiming started.", Fore.WHITE)
@@ -200,82 +170,111 @@ def paint(canvas_pos, color, header):
 # Fungsi untuk memuat akun dari data.txt
 def load_accounts_from_file(filename):
     with open(filename, 'r') as file:
-        accounts = [line.strip() for line in file if line.strip()]
+        accounts = [f"initData {line.strip()}" for line in file if line.strip()]
     return accounts
 
-# Fungsi untuk memuat queryid dari data.txt
-def load_queryid_from_file(filename="data.txt"):
+# Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
+def fetch_mining_data(header, retries=3):
+    for attempt in range(retries):
+        try:
+            response = session.get(f"{url}/mining/status", headers=header, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                user_balance = data.get('userBalance', 'Unknown')
+                log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
+                return True
+            elif response.status_code == 401:
+                log_message(f"Userid dari data.txt : 401 Unauthorized", Fore.RED)
+                return False
+            else:
+                log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
+        except requests.exceptions.RequestException as e:
+            log_message(f"Kesalahan saat mengambil data mining: {e}", Fore.RED)
+        time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
+    return False
+
+# Fungsi untuk mendapatkan token baru
+def request_new_token(account):
+    log_message("Meminta token baru...", Fore.YELLOW)
     try:
-        with open(filename, 'r') as file:
-            return file.read().strip()
-    except FileNotFoundError:
-        log_message("File data.txt tidak ditemukan. Pastikan file tersebut ada.", Fore.RED)
+        response = session.post(f"{url}/login", data={"account": account}, timeout=10)
+        if response.status_code == 200:
+            new_token = response.json().get('token')
+            return new_token
+        else:
+            log_message(f"Gagal mendapatkan token baru: {response.status_code}", Fore.RED)
+            return None
+    except requests.exceptions.RequestException as e:
+        log_message(f"Kesalahan saat meminta token baru: {e}", Fore.RED)
         return None
 
-# Fungsi utama untuk login menggunakan queryid dari data.txt dan hanya melakukan login ulang jika kadaluarsa
-def main(account):
-    auth = load_queryid_from_file()  # Ambil queryid dari file
-    if not auth:  # Jika tidak ada queryid di file, login otomatis
-        auth = auto_login(account)
-
+# Fungsi utama untuk melakukan proses melukis
+def main(auth, account):
     headers = get_headers()
 
-    # Set auth token dalam headers untuk request selanjutnya
-    headers['authorization'] = auth
+    # Periksa apakah ada token di session
+    session_token = load_session()
+    if session_token:
+        headers['authorization'] = session_token
+        log_message("Token loaded from session.", Fore.GREEN)
+    else:
+        headers['authorization'] = auth
 
     log_message("Auto painting started.", Fore.WHITE)
 
     while True:
-        # Mengecek apakah queryid masih valid
-        if is_queryid_expired():
-            auth = auto_login(account)  # Login ulang untuk mendapatkan queryid baru
-            if auth:
-                save_session(auth)  # Simpan queryid baru ke session
-                save_queryid_to_file(auth)  # Simpan queryid baru ke data.txt
-                headers['authorization'] = auth  # Update header dengan queryid baru
-            else:
-                log_message("Gagal mendapatkan queryid baru. Bot berhenti.", Fore.RED)
-                return
+        try:
+            if not fetch_mining_data(headers):
+                log_message("Token Dari session atau data.txt Expired :(", Fore.RED)
+                new_auth = request_new_token(account)
+                if new_auth:
+                    headers['authorization'] = new_auth
+                    save_session(new_auth)  # Simpan token baru ke session
+                    log_message("Token diperbarui dan disimpan ke session.", Fore.GREEN)
+                else:
+                    log_message("Gagal mendapatkan token baru.", Fore.RED)
+                    return
 
-        # Klaim sumber daya
-        claim(headers)
+            # Klaim sumber daya
+            claim(headers)
 
-        # Mulai melukis
-        size = len(image) * len(image[0])
-        order = [i for i in range(size)]
-        random.shuffle(order)
+            size = len(image) * len(image[0])
+            order = [i for i in range(size)]
+            random.shuffle(order)
 
-        for pos_image in order:
-            x, y = get_pos(pos_image, len(image[0]))
-            time.sleep(random.uniform(1, 3))  # Jeda acak yang lebih besar
+            for pos_image in order:
+                x, y = get_pos(pos_image, len(image[0]))
+                time.sleep(random.uniform(1, 3))  # Jeda acak yang lebih besar
 
-            try:
-                color = get_color(get_canvas_pos(x, y), headers)
-                if color == -1:
-                    log_message("Expired Bang", Fore.RED)
-                    break
+                try:
+                    color = get_color(get_canvas_pos(x, y), headers)
+                    if color == -1:
+                        log_message("Expired Bang", Fore.RED)
+                        break
 
-                if image[y][x] == ' ' or color == c[image[y][x]]:
-                    continue
+                    if image[y][x] == ' ' or color == c[image[y][x]]:
+                        continue
 
-                result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
-                if result == -1:
-                    log_message("Token Expired :(", Fore.RED)
-                    break
-                elif not result:
-                    break
+                    result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
+                    if result == -1:
+                        log_message("Token Expired :(", Fore.RED)
+                        break
+                    elif not result:
+                        break
 
-                time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
+                    time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
 
-            except IndexError:
-                log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
+                except IndexError:
+                    log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
 
-        time.sleep(30 * 60)  # Cek setiap 30 menit
+        except requests.exceptions.RequestException as e:
+            log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
-# Memulai bot
+# Muat satu akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
 
+# Panggil main hanya dengan satu akun
 if akun_list:
-    main(akun_list[0])  # Menjalankan bot menggunakan akun dari data.txt
+    main(akun_list[0], akun_list[0])
 else:
     log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
