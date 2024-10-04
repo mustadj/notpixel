@@ -79,16 +79,6 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
 # Buat session dengan logika retry
 session = get_session_with_retries()
 
-# Fungsi untuk menyimpan token ke session
-def save_session(token):
-    with shelve.open("session.db") as session:
-        session['token'] = token
-
-# Fungsi untuk mengambil token dari session
-def load_session():
-    with shelve.open("session.db") as session:
-        return session.get('token', None)
-
 # Tambahkan headers untuk menyerupai request dari browser sungguhan
 def get_headers():
     return {
@@ -194,32 +184,12 @@ def fetch_mining_data(header, retries=3):
         time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
     return False
 
-# Fungsi untuk mendapatkan token baru
-def request_new_token(account):
-    log_message("Meminta token baru...", Fore.YELLOW)
-    try:
-        response = session.post(f"{url}/login", data={"account": account}, timeout=10)
-        if response.status_code == 200:
-            new_token = response.json().get('token')
-            return new_token
-        else:
-            log_message(f"Gagal mendapatkan token baru: {response.status_code}", Fore.RED)
-            return None
-    except requests.exceptions.RequestException as e:
-        log_message(f"Kesalahan saat meminta token baru: {e}", Fore.RED)
-        return None
-
 # Fungsi utama untuk melakukan proses melukis
 def main(auth, account):
     headers = get_headers()
 
-    # Periksa apakah ada token di session
-    session_token = load_session()
-    if session_token:
-        headers['authorization'] = session_token
-        log_message("Token loaded from session.", Fore.GREEN)
-    else:
-        headers['authorization'] = auth
+    # Menggunakan header otorisasi dari argumen auth
+    headers['authorization'] = auth
 
     log_message("Auto painting started.", Fore.WHITE)
 
@@ -227,14 +197,7 @@ def main(auth, account):
         try:
             if not fetch_mining_data(headers):
                 log_message("Token Dari session atau data.txt Expired :(", Fore.RED)
-                new_auth = request_new_token(account)
-                if new_auth:
-                    headers['authorization'] = new_auth
-                    save_session(new_auth)  # Simpan token baru ke session
-                    log_message("Token diperbarui dan disimpan ke session.", Fore.GREEN)
-                else:
-                    log_message("Gagal mendapatkan token baru.", Fore.RED)
-                    return
+                return
 
             # Klaim sumber daya
             claim(headers)
@@ -278,4 +241,4 @@ akun_list = load_accounts_from_file("data.txt")
 if akun_list:
     main(akun_list[0], akun_list[0])
 else:
-    log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
+    log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)  
