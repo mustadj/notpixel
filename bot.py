@@ -32,12 +32,17 @@ def log_message(message, color=Style.RESET_ALL):
 def login_with_userid(userid):
     log_message(f"Login menggunakan userid: {userid}", Fore.YELLOW)
     try:
-        response = requests.post(f"{url}/login", data={"userid": userid}, timeout=10)
+        # Debug isi dari userid sebelum melakukan request
+        log_message(f"Debug userid yang dikirim: {userid}", Fore.CYAN)
+
+        # Lakukan login dengan mengirim data sebagai JSON
+        response = requests.post(f"{url}/login", json={"userid": userid}, timeout=10)
+
         if response.status_code == 200:
             log_message("Login berhasil, token diperoleh.", Fore.GREEN)
             return response.json().get('token')
         else:
-            log_message(f"Gagal login dengan userid {userid}: {response.status_code}", Fore.RED)
+            log_message(f"Gagal login dengan userid {userid}: {response.status_code} - {response.text}", Fore.RED)
             return None
     except requests.exceptions.RequestException as e:
         log_message(f"Kesalahan saat login: {e}", Fore.RED)
@@ -61,7 +66,7 @@ def claim(headers):
         if response.status_code == 200:
             log_message("Sumber daya berhasil diklaim.", Fore.GREEN)
         else:
-            log_message(f"Gagal mengklaim: {response.status_code}", Fore.RED)
+            log_message(f"Gagal mengklaim: {response.status_code} - {response.text}", Fore.RED)
     except requests.exceptions.RequestException as e:
         log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
 
