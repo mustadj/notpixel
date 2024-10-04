@@ -14,7 +14,7 @@ url = "https://notpx.app/api/v1"
 
 # WAKTU TUNGGU
 WAIT = 180 * 3
-DELAY = random.uniform(1, 3)
+DELAY = random.uniform(1, 3)  # Delay acak lebih luas untuk anti-bot
 
 # DIMENSI GAMBAR
 WIDTH = 1000
@@ -47,7 +47,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=backoff_factor,
+        backoff_factor=0.3,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -68,15 +68,9 @@ def load_session():
     with shelve.open("session.db") as session:
         return session.get('token', None)
 
-# Fungsi untuk menghapus token dari session
-def clear_session():
-    with shelve.open("session.db") as session:
-        if 'token' in session:
-            del session['token']
-
 # Tambahkan headers untuk menyerupai request dari browser sungguhan
-def get_headers(token=None):
-    headers = {
+def get_headers():
+    return {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.5',
         'Referer': 'https://example.com',
@@ -84,9 +78,6 @@ def get_headers(token=None):
         'Accept-Encoding': 'gzip, deflate, br',
         'Cache-Control': 'max-age=0'
     }
-    if token:
-        headers['authorization'] = f"Bearer {token}"
-    return headers
 
 # Fungsi untuk mendapatkan warna pixel dari server
 def get_color(pixel, header):
@@ -110,13 +101,9 @@ def get_color(pixel, header):
 def claim(header):
     log_message("Auto claiming started.", Fore.WHITE)
     try:
-        response = session.get(f"{url}/mining/claim", headers=header, timeout=10)
-        if response.status_code == 401:
-            return False  # Token kadaluwarsa
+        session.get(f"{url}/mining/claim", headers=header, timeout=10)
     except requests.exceptions.RequestException as e:
         log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
-        return False
-    return True
 
 # Fungsi untuk menghitung indeks pixel berdasarkan posisi x, y
 def get_pixel(x, y):
@@ -157,16 +144,11 @@ def paint(canvas_pos, color, header):
         log_message(f"Gagal melukis: {e}", Fore.RED)
         return False
 
-# Fungsi untuk memuat akun dari file JSON
+# Fungsi untuk memuat akun dari data.txt
 def load_accounts_from_file(filename):
-    try:
-        with open(filename, 'r') as file:
-            data = json.load(file)  # Load JSON dari file
-            user_id = data[0]['user_id']  # Ambil 'user_id' dari JSON
-            return f"initData {user_id}"
-    except Exception as e:
-        log_message(f"Error saat memuat akun dari {filename}: {e}", Fore.RED)
-        return None
+    with open(filename, 'r') as file:
+        accounts = [f"initData {line.strip()}" for line in file if line.strip()]
+    return accounts
 
 # Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
 def fetch_mining_data(header, retries=3):
@@ -179,7 +161,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f"Token kadaluwarsa.", Fore.RED)
+                log_message(f"Userid dari data.txt : 401 Unauthorized", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -210,32 +192,28 @@ def main(auth, account):
     # Periksa apakah ada token di session
     session_token = load_session()
     if session_token:
-        headers['authorization'] = f"Bearer {session_token}"
+        headers['authorization'] = session_token
         log_message("Token loaded from session.", Fore.GREEN)
     else:
-        headers['authorization'] = f"Bearer {auth}"
+        headers['authorization'] = auth
 
     log_message("Auto painting started.", Fore.WHITE)
 
     while True:
         try:
             if not fetch_mining_data(headers):
-                log_message("Token kadaluwarsa atau tidak valid, mencoba mendapatkan token baru.", Fore.RED)
+                log_message("Token Dari session atau data.txt Expired :(", Fore.RED)
                 new_auth = request_new_token(account)
                 if new_auth:
-                    headers['authorization'] = f"Bearer {new_auth}"
+                    headers['authorization'] = new_auth
                     save_session(new_auth)  # Simpan token baru ke session
                     log_message("Token diperbarui dan disimpan ke session.", Fore.GREEN)
                 else:
                     log_message("Gagal mendapatkan token baru.", Fore.RED)
-                    clear_session()  # Hapus token yang invalid
                     return
 
             # Klaim sumber daya
-            if not claim(headers):
-                log_message("Token kadaluwarsa, menghapus token dari session.", Fore.RED)
-                clear_session()
-                break
+            claim(headers)
 
             size = len(image) * len(image[0])
             order = [i for i in range(size)]
@@ -248,8 +226,8 @@ def main(auth, account):
                 try:
                     color = get_color(get_canvas_pos(x, y), headers)
                     if color == -1:
-                        log_message("Token kadaluwarsa saat mencoba melukis.", Fore.RED)
-                        clear_session()
+                        log_message("Expired Bang", Fore.RED)
+                        print(headers["authorization"])
                         break
 
                     if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -257,8 +235,8 @@ def main(auth, account):
 
                     result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                     if result == -1:
-                        log_message("Token kadaluwarsa saat melukis.", Fore.RED)
-                        clear_session()
+                        log_message("Token Expired :(", Fore.RED)
+                        print(headers["authorization"])
                         break
                     elif not result:
                         break
@@ -286,6 +264,6 @@ akun_list = load_accounts_from_file("data.txt")
 
 # Panggil main hanya dengan satu akun
 if akun_list:
-    main(akun_list, akun_list)
+    main(akun_list[0], akun_list[0])
 else:
     log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
