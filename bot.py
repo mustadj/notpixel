@@ -53,11 +53,11 @@ def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
-        sys.stdout.write(f"\rWaktu Tunggu Sebelum Mengulang Eksekusi: {timer}   ")  # Tidak ada spasi ekstra
+        sys.stdout.write(f"\rWaktu Tunggu Sebelum Mengulang Eksekusi: {timer}   ")  # Tambahkan spasi untuk membersihkan sisa teks
         sys.stdout.flush()
         time.sleep(1)
         duration -= 1
-    # Hapus output timer setelah selesai
+    # Kosongkan baris sepenuhnya setelah timer selesai
     sys.stdout.write("\r" + " " * 50 + "\r")
     sys.stdout.flush()
 
@@ -157,8 +157,8 @@ def paint(canvas_pos, color, header):
     try:
         response = session.post(f"{url}/repaint/start", data=json.dumps(data), headers=header, timeout=10)
         if response.status_code == 400:
-            log_message("Painter: No charge available. Sleeping for 60 minutes.", Fore.BLUE)
-            countdown_timer(60 * 60)
+            log_message("Painter: No charge available. Sleeping for 5 minutes.", Fore.BLUE)
+            countdown_timer(5 * 60)
             log_message("Timer selesai. Melanjutkan eksekusi.", Fore.YELLOW)
             return False
         if response.status_code == 401:
