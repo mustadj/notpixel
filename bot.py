@@ -110,7 +110,7 @@ def get_color(pixel, header):
 
 # Fungsi untuk mengklaim sumber daya dari server
 def claim(header):
-    log_message("Auto claiming started.", Fore.WHITE)
+    log_message("Auto claim resource berhasil.", Fore.YELLOW)
     try:
         response = session.get(f"{url}/mining/claim", headers=header, timeout=10)
         if response.status_code == 500:
