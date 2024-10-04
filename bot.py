@@ -1,3 +1,5 @@
+import os
+import sys
 import requests
 import json
 import time
@@ -6,7 +8,6 @@ import shelve
 from setproctitle import setproctitle
 from getimage import get
 from colorama import Fore, Style, init
-from datetime import datetime
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
@@ -26,6 +27,9 @@ init(autoreset=True)
 
 setproctitle("notpixel")
 
+# Clear terminal saat bot dimulai
+os.system('clear')
+
 # Ambil konfigurasi gambar
 image = get("")
 
@@ -36,9 +40,10 @@ c = {
     '*': "#ffffff"
 }
 
-# Fungsi untuk mencatat pesan dengan timestamp
+# Fungsi untuk mencatat pesan dengan timestamp dan meng-update satu baris secara dinamis
 def log_message(message, color=Style.RESET_ALL):
-    print(f"{color}{message}{Style.RESET_ALL}")
+    sys.stdout.write(f"\r{color}{message}{Style.RESET_ALL}")
+    sys.stdout.flush()
 
 # Fungsi untuk menginisialisasi session requests dengan logika retry
 def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504)):
@@ -47,7 +52,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=0.3,
+        backoff_factor=backoff_factor,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -227,7 +232,6 @@ def main(auth, account):
                     color = get_color(get_canvas_pos(x, y), headers)
                     if color == -1:
                         log_message("Expired Bang", Fore.RED)
-                        print(headers["authorization"])
                         break
 
                     if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -236,7 +240,6 @@ def main(auth, account):
                     result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                     if result == -1:
                         log_message("Token Expired :(", Fore.RED)
-                        print(headers["authorization"])
                         break
                     elif not result:
                         break
@@ -254,10 +257,11 @@ def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
-        print(f'Timer Mundur: {timer}', end="\r")
+        sys.stdout.write(f"\rTimer Mundur: {timer}")
+        sys.stdout.flush()
         time.sleep(1)
         duration -= 1
-    print("Countdown selesai. Melanjutkan proses...")
+    sys.stdout.write("\nCountdown selesai. Melanjutkan proses...\n")
 
 # Muat satu akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
