@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import random
+import shelve
 from setproctitle import setproctitle
 from getimage import get
 from colorama import Fore, Style, init
@@ -56,6 +57,16 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
 
 # Buat session dengan logika retry
 session = get_session_with_retries()
+
+# Fungsi untuk menyimpan token ke session
+def save_session(token):
+    with shelve.open("session.db") as session:
+        session['token'] = token
+
+# Fungsi untuk mengambil token dari session
+def load_session():
+    with shelve.open("session.db") as session:
+        return session.get('token', None)
 
 # Tambahkan headers untuk menyerupai request dari browser sungguhan
 def get_headers():
@@ -177,18 +188,26 @@ def request_new_token(account):
 # Fungsi utama untuk melakukan proses melukis
 def main(auth, account):
     headers = get_headers()
-    headers['authorization'] = auth  # Tambah authorization ke header
+
+    # Periksa apakah ada token di session
+    session_token = load_session()
+    if session_token:
+        headers['authorization'] = session_token
+        log_message("Token loaded from session.", Fore.GREEN)
+    else:
+        headers['authorization'] = auth
 
     log_message("Auto painting started.", Fore.WHITE)
 
     while True:
         try:
             if not fetch_mining_data(headers):
-                log_message("Token Dari data.txt Expired :(", Fore.RED)
+                log_message("Token Dari session atau data.txt Expired :(", Fore.RED)
                 new_auth = request_new_token(account)
                 if new_auth:
                     headers['authorization'] = new_auth
-                    log_message("Token diperbarui.", Fore.GREEN)
+                    save_session(new_auth)  # Simpan token baru ke session
+                    log_message("Token diperbarui dan disimpan ke session.", Fore.GREEN)
                 else:
                     log_message("Gagal mendapatkan token baru.", Fore.RED)
                     return
