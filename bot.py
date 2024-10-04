@@ -6,7 +6,7 @@ import shelve
 from setproctitle import setproctitle
 from getimage import get
 from colorama import Fore, Style, init
-from datetime import datetime, timedelta
+from datetime import datetime
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
@@ -14,7 +14,7 @@ url = "https://notpx.app/api/v1"
 
 # WAKTU TUNGGU
 WAIT = 180 * 3
-DELAY = random.uniform(1, 3)
+DELAY = random.uniform(1, 3)  # Delay acak lebih luas untuk anti-bot
 
 # DIMENSI GAMBAR
 WIDTH = 1000
@@ -47,7 +47,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=backoff_factor,
+        backoff_factor=0.3,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -59,17 +59,14 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
 session = get_session_with_retries()
 
 # Fungsi untuk menyimpan token ke session
-def save_session(token, expiry):
-    with shelve.open("session.db") as session_store:
-        session_store['token'] = token
-        session_store['expiry'] = expiry
+def save_session(token):
+    with shelve.open("session.db") as session:
+        session['token'] = token
 
 # Fungsi untuk mengambil token dari session
 def load_session():
-    with shelve.open("session.db") as session_store:
-        token = session_store.get('token', None)
-        expiry = session_store.get('expiry', None)
-        return token, expiry
+    with shelve.open("session.db") as session:
+        return session.get('token', None)
 
 # Tambahkan headers untuk menyerupai request dari browser sungguhan
 def get_headers():
@@ -170,7 +167,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
         except requests.exceptions.RequestException as e:
             log_message(f"Kesalahan saat mengambil data mining: {e}", Fore.RED)
-        time.sleep(1)
+        time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
     return False
 
 # Fungsi untuk mendapatkan token baru
@@ -180,41 +177,40 @@ def request_new_token(account):
         response = session.post(f"{url}/login", data={"account": account}, timeout=10)
         if response.status_code == 200:
             new_token = response.json().get('token')
-            expiry = datetime.now() + timedelta(hours=1)  # Token valid for 1 hour
-            return new_token, expiry
+            return new_token
         else:
             log_message(f"Gagal mendapatkan token baru: {response.status_code}", Fore.RED)
-            return None, None
+            return None
     except requests.exceptions.RequestException as e:
         log_message(f"Kesalahan saat meminta token baru: {e}", Fore.RED)
-        return None, None
-
-# Fungsi untuk memperbarui token jika sudah mendekati kadaluwarsa
-def ensure_token_is_valid(account, headers):
-    token, expiry = load_session()
-    if token and expiry and expiry > datetime.now():
-        log_message("Token valid, tidak perlu diperbarui.", Fore.GREEN)
-        headers['authorization'] = token
-    else:
-        log_message("Token kadaluwarsa atau tidak ada, meminta token baru.", Fore.YELLOW)
-        new_token, new_expiry = request_new_token(account)
-        if new_token:
-            headers['authorization'] = new_token
-            save_session(new_token, new_expiry)
-        else:
-            log_message("Gagal memperbarui token.", Fore.RED)
+        return None
 
 # Fungsi utama untuk melakukan proses melukis
-def main(account):
+def main(auth, account):
     headers = get_headers()
 
-    while True:
-        ensure_token_is_valid(account, headers)
+    # Periksa apakah ada token di session
+    session_token = load_session()
+    if session_token:
+        headers['authorization'] = session_token
+        log_message("Token loaded from session.", Fore.GREEN)
+    else:
+        headers['authorization'] = auth
 
+    log_message("Auto painting started.", Fore.WHITE)
+
+    while True:
         try:
             if not fetch_mining_data(headers):
-                log_message("Token expired.", Fore.RED)
-                return
+                log_message("Token Dari session atau data.txt Expired :(", Fore.RED)
+                new_auth = request_new_token(account)
+                if new_auth:
+                    headers['authorization'] = new_auth
+                    save_session(new_auth)  # Simpan token baru ke session
+                    log_message("Token diperbarui dan disimpan ke session.", Fore.GREEN)
+                else:
+                    log_message("Gagal mendapatkan token baru.", Fore.RED)
+                    return
 
             # Klaim sumber daya
             claim(headers)
@@ -225,12 +221,13 @@ def main(account):
 
             for pos_image in order:
                 x, y = get_pos(pos_image, len(image[0]))
-                time.sleep(random.uniform(1, 3))
+                time.sleep(random.uniform(1, 3))  # Jeda acak yang lebih besar
 
                 try:
                     color = get_color(get_canvas_pos(x, y), headers)
                     if color == -1:
                         log_message("Expired Bang", Fore.RED)
+                        print(headers["authorization"])
                         break
 
                     if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -239,11 +236,12 @@ def main(account):
                     result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                     if result == -1:
                         log_message("Token Expired :(", Fore.RED)
+                        print(headers["authorization"])
                         break
                     elif not result:
                         break
 
-                    time.sleep(random.uniform(0.1, 0.3))
+                    time.sleep(random.uniform(0.1, 0.3))  # Jeda tambahan
 
                 except IndexError:
                     log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
@@ -266,6 +264,6 @@ akun_list = load_accounts_from_file("data.txt")
 
 # Panggil main hanya dengan satu akun
 if akun_list:
-    main(akun_list[0])
+    main(akun_list[0], akun_list[0])
 else:
     log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
