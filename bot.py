@@ -99,6 +99,24 @@ def get_headers():
         'Cache-Control': 'max-age=0'
     }
 
+# Fungsi untuk mendapatkan warna pixel dari server
+def get_color(pixel, header):
+    try:
+        response = session.get(f"{url}/image/get/{str(pixel)}", headers=header, timeout=10)
+        if response.status_code == 401:
+            return -1
+        return response.json()['pixel']['color']
+    except KeyError:
+        return "#000000"
+    except requests.exceptions.Timeout:
+        return "#000000"
+    except requests.exceptions.ConnectionError as e:
+        log_message(f"Kesalahan koneksi: {e}", Fore.RED)
+        return "#000000"
+    except requests.exceptions.RequestException as e:
+        log_message(f"Permintaan gagal: {e}", Fore.RED)
+        return "#000000"
+
 # Fungsi untuk mendeteksi apakah queryid kadaluarsa
 def is_queryid_expired():
     try:
