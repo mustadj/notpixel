@@ -41,8 +41,11 @@ c = {
 }
 
 # Fungsi untuk mencatat pesan dengan timestamp dan meng-update satu baris secara dinamis
-def log_message(message, color=Style.RESET_ALL):
-    sys.stdout.write(f"\n{color}{message}{Style.RESET_ALL}\n")
+def log_message(message, color=Style.RESET_ALL, newline=True):
+    if newline:
+        sys.stdout.write(f"{color}{message}{Style.RESET_ALL}\n")
+    else:
+        sys.stdout.write(f"\r{color}{message}{Style.RESET_ALL}")
     sys.stdout.flush()
 
 # Fungsi untuk menampilkan timer tanpa bertumpuk dengan log
