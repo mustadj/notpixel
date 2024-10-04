@@ -53,7 +53,7 @@ def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
-        sys.stdout.write(f"\rWaktu Tunggu Sebelum Mengelang Eksekusi: {timer}")  # Tidak ada spasi ekstra
+        sys.stdout.write(f"\rWaktu Tunggu Sebelum Mengulang Eksekusi: {timer}")  # Tidak ada spasi ekstra
         sys.stdout.flush()
         time.sleep(1)
         duration -= 1
