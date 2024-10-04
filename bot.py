@@ -53,7 +53,7 @@ def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
-        sys.stdout.write(f"\rTimer Mundur: {timer}   \033[0G")  # Pindahkan kursor ke kolom 0 setelah timer
+        sys.stdout.write(f"\rTimer Mundur: {timer}{' ' * 10}")  # Tambahkan 10 spasi ekstra di akhir
         sys.stdout.flush()
         time.sleep(1)
         duration -= 1
