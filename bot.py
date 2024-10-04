@@ -47,7 +47,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         total=retries,
         read=retries,
         connect=retries,
-        backoff_factor=0.3,
+        backoff_factor=backoff_factor,
         status_forcelist=status_forcelist,
     )
     adapter = HTTPAdapter(max_retries=retry)
@@ -68,9 +68,15 @@ def load_session():
     with shelve.open("session.db") as session:
         return session.get('token', None)
 
+# Fungsi untuk menghapus token dari session
+def clear_session():
+    with shelve.open("session.db") as session:
+        if 'token' in session:
+            del session['token']
+
 # Tambahkan headers untuk menyerupai request dari browser sungguhan
-def get_headers():
-    return {
+def get_headers(token=None):
+    headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.5',
         'Referer': 'https://example.com',
@@ -78,6 +84,9 @@ def get_headers():
         'Accept-Encoding': 'gzip, deflate, br',
         'Cache-Control': 'max-age=0'
     }
+    if token:
+        headers['authorization'] = f"Bearer {token}"
+    return headers
 
 # Fungsi untuk mendapatkan warna pixel dari server
 def get_color(pixel, header):
@@ -101,9 +110,13 @@ def get_color(pixel, header):
 def claim(header):
     log_message("Auto claiming started.", Fore.WHITE)
     try:
-        session.get(f"{url}/mining/claim", headers=header, timeout=10)
+        response = session.get(f"{url}/mining/claim", headers=header, timeout=10)
+        if response.status_code == 401:
+            return False  # Token kadaluwarsa
     except requests.exceptions.RequestException as e:
         log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
+        return False
+    return True
 
 # Fungsi untuk menghitung indeks pixel berdasarkan posisi x, y
 def get_pixel(x, y):
@@ -161,7 +174,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f"Userid dari data.txt : 401 Unauthorized", Fore.RED)
+                log_message(f"Token kadaluwarsa.", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -192,28 +205,32 @@ def main(auth, account):
     # Periksa apakah ada token di session
     session_token = load_session()
     if session_token:
-        headers['authorization'] = session_token
+        headers['authorization'] = f"Bearer {session_token}"
         log_message("Token loaded from session.", Fore.GREEN)
     else:
-        headers['authorization'] = auth
+        headers['authorization'] = f"Bearer {auth}"
 
     log_message("Auto painting started.", Fore.WHITE)
 
     while True:
         try:
             if not fetch_mining_data(headers):
-                log_message("Token Dari session atau data.txt Expired :(", Fore.RED)
+                log_message("Token kadaluwarsa atau tidak valid, mencoba mendapatkan token baru.", Fore.RED)
                 new_auth = request_new_token(account)
                 if new_auth:
-                    headers['authorization'] = new_auth
+                    headers['authorization'] = f"Bearer {new_auth}"
                     save_session(new_auth)  # Simpan token baru ke session
                     log_message("Token diperbarui dan disimpan ke session.", Fore.GREEN)
                 else:
                     log_message("Gagal mendapatkan token baru.", Fore.RED)
+                    clear_session()  # Hapus token yang invalid
                     return
 
             # Klaim sumber daya
-            claim(headers)
+            if not claim(headers):
+                log_message("Token kadaluwarsa, menghapus token dari session.", Fore.RED)
+                clear_session()
+                break
 
             size = len(image) * len(image[0])
             order = [i for i in range(size)]
@@ -226,8 +243,8 @@ def main(auth, account):
                 try:
                     color = get_color(get_canvas_pos(x, y), headers)
                     if color == -1:
-                        log_message("Expired Bang", Fore.RED)
-                        print(headers["authorization"])
+                        log_message("Token kadaluwarsa saat mencoba melukis.", Fore.RED)
+                        clear_session()
                         break
 
                     if image[y][x] == ' ' or color == c[image[y][x]]:
@@ -235,8 +252,8 @@ def main(auth, account):
 
                     result = paint(get_canvas_pos(x, y), c[image[y][x]], headers)
                     if result == -1:
-                        log_message("Token Expired :(", Fore.RED)
-                        print(headers["authorization"])
+                        log_message("Token kadaluwarsa saat melukis.", Fore.RED)
+                        clear_session()
                         break
                     elif not result:
                         break
