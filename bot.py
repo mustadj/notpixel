@@ -14,7 +14,7 @@ url = "https://notpx.app/api/v1"
 
 # WAKTU TUNGGU
 WAIT = 180 * 3
-DELAY = random.uniform(1, 3)  # Delay acak lebih luas untuk anti-bot
+DELAY = random.uniform(1, 3)
 
 # DIMENSI GAMBAR
 WIDTH = 1000
@@ -157,11 +157,16 @@ def paint(canvas_pos, color, header):
         log_message(f"Gagal melukis: {e}", Fore.RED)
         return False
 
-# Fungsi untuk memuat akun dari data.txt
+# Fungsi untuk memuat akun dari file JSON
 def load_accounts_from_file(filename):
-    with open(filename, 'r') as file:
-        accounts = [f"initData {line.strip()}" for line in file if line.strip()]
-    return accounts
+    try:
+        with open(filename, 'r') as file:
+            data = json.load(file)  # Load JSON dari file
+            user_id = data[0]['user_id']  # Ambil 'user_id' dari JSON
+            return f"initData {user_id}"
+    except Exception as e:
+        log_message(f"Error saat memuat akun dari {filename}: {e}", Fore.RED)
+        return None
 
 # Fungsi untuk mengambil data mining (saldo dan statistik lainnya) dengan logika retry
 def fetch_mining_data(header, retries=3):
@@ -281,6 +286,6 @@ akun_list = load_accounts_from_file("data.txt")
 
 # Panggil main hanya dengan satu akun
 if akun_list:
-    main(akun_list[0], akun_list[0])
+    main(akun_list, akun_list)
 else:
     log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
