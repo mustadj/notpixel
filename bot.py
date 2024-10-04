@@ -42,8 +42,19 @@ c = {
 
 # Fungsi untuk mencatat pesan dengan timestamp dan meng-update satu baris secara dinamis
 def log_message(message, color=Style.RESET_ALL):
-    sys.stdout.write(f"\r{color}{message}{Style.RESET_ALL}")
+    sys.stdout.write(f"\n{color}{message}{Style.RESET_ALL}\n")
     sys.stdout.flush()
+
+# Fungsi untuk menampilkan timer tanpa bertumpuk dengan log
+def countdown_timer(duration):
+    while duration > 0:
+        mins, secs = divmod(duration, 60)
+        timer = f'{int(mins):02}:{int(secs):02}'
+        sys.stdout.write(f"\rTimer Mundur: {timer}  ")
+        sys.stdout.flush()
+        time.sleep(1)
+        duration -= 1
+    sys.stdout.write("\nCountdown selesai. Melanjutkan proses...\n")
 
 # Fungsi untuk menginisialisasi session requests dengan logika retry
 def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504)):
@@ -54,6 +65,7 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
         connect=retries,
         backoff_factor=backoff_factor,
         status_forcelist=status_forcelist,
+        raise_on_status=False  # Jangan langsung raise error jika status 500
     )
     adapter = HTTPAdapter(max_retries=retry)
     session.mount("http://", adapter)
@@ -106,7 +118,10 @@ def get_color(pixel, header):
 def claim(header):
     log_message("Auto claiming started.", Fore.WHITE)
     try:
-        session.get(f"{url}/mining/claim", headers=header, timeout=10)
+        response = session.get(f"{url}/mining/claim", headers=header, timeout=10)
+        if response.status_code == 500:
+            log_message(f"Server error saat klaim, coba lagi nanti.", Fore.RED)
+            time.sleep(WAIT)  # Tunggu lebih lama sebelum mencoba lagi
     except requests.exceptions.RequestException as e:
         log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
 
@@ -251,17 +266,6 @@ def main(auth, account):
 
         except requests.exceptions.RequestException as e:
             log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
-
-# Fungsi untuk menampilkan timer mundur
-def countdown_timer(duration):
-    while duration > 0:
-        mins, secs = divmod(duration, 60)
-        timer = f'{int(mins):02}:{int(secs):02}'
-        sys.stdout.write(f"\rTimer Mundur: {timer}")
-        sys.stdout.flush()
-        time.sleep(1)
-        duration -= 1
-    sys.stdout.write("\nCountdown selesai. Melanjutkan proses...\n")
 
 # Muat satu akun dari data.txt
 akun_list = load_accounts_from_file("data.txt")
