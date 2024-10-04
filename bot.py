@@ -90,6 +90,17 @@ def get_headers():
         'Cache-Control': 'max-age=0'
     }
 
+# Fungsi untuk mengirimkan ping ke server agar session tetap aktif
+def send_ping(headers):
+    try:
+        response = session.get(f"{url}/ping", headers=headers, timeout=10)
+        if response.status_code == 200:
+            log_message("Ping ke server berhasil, session tetap aktif.", Fore.GREEN)
+        else:
+            log_message(f"Ping gagal dengan status code: {response.status_code}", Fore.RED)
+    except requests.exceptions.RequestException as e:
+        log_message(f"Kesalahan saat mengirim ping: {e}", Fore.RED)
+
 # Fungsi untuk mendapatkan warna pixel dari server
 def get_color(pixel, header):
     try:
@@ -184,7 +195,7 @@ def fetch_mining_data(header, retries=3):
         time.sleep(1)  # Tunggu sebentar sebelum mencoba lagi
     return False
 
-# Fungsi utama untuk melakukan proses melukis
+# Fungsi utama untuk melakukan proses melukis dengan penambahan ping
 def main(auth, account):
     headers = get_headers()
 
@@ -193,8 +204,16 @@ def main(auth, account):
 
     log_message("Auto painting started.", Fore.WHITE)
 
+    last_ping_time = time.time()  # Waktu terakhir ping dilakukan
+    ping_interval = 60  # Interval ping dalam detik
+
     while True:
         try:
+            # Cek apakah waktu untuk mengirim ping sudah tiba
+            if time.time() - last_ping_time >= ping_interval:
+                send_ping(headers)
+                last_ping_time = time.time()  # Update waktu terakhir ping
+
             if not fetch_mining_data(headers):
                 log_message("Token Dari session atau data.txt Expired :(", Fore.RED)
                 return
@@ -241,4 +260,4 @@ akun_list = load_accounts_from_file("data.txt")
 if akun_list:
     main(akun_list[0], akun_list[0])
 else:
-    log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)  
+    log_message("Tidak ada akun yang ditemukan di data.txt", Fore.RED)
