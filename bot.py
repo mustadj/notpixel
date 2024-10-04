@@ -2,7 +2,6 @@ import requests
 import json
 import time
 import random
-import shelve
 from setproctitle import setproctitle
 from getimage import get
 from colorama import Fore, Style, init
@@ -58,22 +57,9 @@ def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(50
 # Buat session dengan logika retry
 session = get_session_with_retries()
 
-# Fungsi untuk menyimpan token ke session
-def save_session(token, expiry):
-    with shelve.open("session.db") as session_store:
-        session_store['token'] = token
-        session_store['expiry'] = expiry
-
-# Fungsi untuk mengambil token dari session
-def load_session():
-    with shelve.open("session.db") as session_store:
-        token = session_store.get('token', None)
-        expiry = session_store.get('expiry', None)
-        return token, expiry
-
 # Tambahkan headers untuk menyerupai request dari browser sungguhan
-def get_headers():
-    return {
+def get_headers(token=None):
+    headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.5',
         'Referer': 'https://example.com',
@@ -81,6 +67,9 @@ def get_headers():
         'Accept-Encoding': 'gzip, deflate, br',
         'Cache-Control': 'max-age=0'
     }
+    if token:
+        headers['authorization'] = token
+    return headers
 
 # Fungsi untuk mendapatkan warna pixel dari server
 def get_color(pixel, header):
@@ -164,7 +153,7 @@ def fetch_mining_data(header, retries=3):
                 log_message(f"Jumlah Pixel: {user_balance}", Fore.WHITE)
                 return True
             elif response.status_code == 401:
-                log_message(f"Userid dari data.txt : 401 Unauthorized", Fore.RED)
+                log_message(f"Unauthorized", Fore.RED)
                 return False
             else:
                 log_message(f"Gagal mengambil data mining: {response.status_code}", Fore.RED)
@@ -173,48 +162,49 @@ def fetch_mining_data(header, retries=3):
         time.sleep(1)
     return False
 
-# Fungsi untuk mendapatkan token baru
+# Fungsi untuk mendapatkan token baru menggunakan akun dari data.txt
 def request_new_token(account):
     log_message("Meminta token baru...", Fore.YELLOW)
     try:
         response = session.post(f"{url}/login", data={"account": account}, timeout=10)
         if response.status_code == 200:
             new_token = response.json().get('token')
-            expiry = datetime.now() + timedelta(hours=1)  # Token valid for 1 hour
-            return new_token, expiry
+            return new_token
         else:
             log_message(f"Gagal mendapatkan token baru: {response.status_code}", Fore.RED)
-            return None, None
+            return None
     except requests.exceptions.RequestException as e:
         log_message(f"Kesalahan saat meminta token baru: {e}", Fore.RED)
-        return None, None
+        return None
 
-# Fungsi untuk memperbarui token jika sudah mendekati kadaluwarsa
-def ensure_token_is_valid(account, headers):
-    token, expiry = load_session()
-    if token and expiry and expiry > datetime.now():
-        log_message("Token valid, tidak perlu diperbarui.", Fore.GREEN)
-        headers['authorization'] = token
+# Fungsi untuk memperbarui token menggunakan akun dari data.txt langsung
+def ensure_token_is_valid(account):
+    new_token = request_new_token(account)
+    if new_token:
+        log_message("Token diperbarui.", Fore.GREEN)
+        return new_token
     else:
-        log_message("Token kadaluwarsa atau tidak ada, meminta token baru.", Fore.YELLOW)
-        new_token, new_expiry = request_new_token(account)
-        if new_token:
-            headers['authorization'] = new_token
-            save_session(new_token, new_expiry)
-        else:
-            log_message("Gagal memperbarui token.", Fore.RED)
+        log_message("Gagal mendapatkan token baru.", Fore.RED)
+        return None
 
 # Fungsi utama untuk melakukan proses melukis
 def main(account):
-    headers = get_headers()
+    token = ensure_token_is_valid(account)
+    if not token:
+        log_message("Tidak dapat melanjutkan tanpa token yang valid.", Fore.RED)
+        return
+
+    headers = get_headers(token)
 
     while True:
-        ensure_token_is_valid(account, headers)
-
         try:
             if not fetch_mining_data(headers):
-                log_message("Token expired.", Fore.RED)
-                return
+                log_message("Token expired. Meminta token baru...", Fore.YELLOW)
+                token = ensure_token_is_valid(account)
+                if not token:
+                    log_message("Gagal memperbarui token. Keluar.", Fore.RED)
+                    return
+                headers = get_headers(token)
 
             # Klaim sumber daya
             claim(headers)
@@ -248,7 +238,7 @@ def main(account):
                 except IndexError:
                     log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
 
-        except requests.exceptions.RequestException as e:
+                except requests.exceptions.RequestException as e:
             log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
 # Fungsi untuk menampilkan timer mundur
