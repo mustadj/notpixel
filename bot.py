@@ -45,7 +45,7 @@ def log_message(message, color=Style.RESET_ALL, newline=True):
     if newline:
         sys.stdout.write(f"{color}{message}{Style.RESET_ALL}\n")
     else:
-        sys.stdout.write(f"\r{color}{message}{Style.RESET_ALL}   ")  # Tambahkan spasi di akhir
+        sys.stdout.write(f"\r{color}{message}{Style.RESET_ALL}")  # Tidak ada spasi di sini
     sys.stdout.flush()
 
 # Fungsi untuk menampilkan timer tanpa bertumpuk dengan log dan membersihkan karakter setelah timer selesai
@@ -53,7 +53,7 @@ def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
-        sys.stdout.write(f"\rTimer Mundur: {timer}{' ' * 10}")  # Tambahkan 10 spasi ekstra di akhir
+        sys.stdout.write(f"\rTimer Mundur: {timer}")  # Tidak ada spasi ekstra
         sys.stdout.flush()
         time.sleep(1)
         duration -= 1
