@@ -53,11 +53,11 @@ def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
-        sys.stdout.write(f"\rTimer Mundur: {timer}   ")  # Tambahkan spasi untuk memastikan output bersih
+        sys.stdout.write(f"\rTimer Mundur: {timer}   ")  # Tambahkan beberapa spasi untuk membersihkan karakter sebelumnya
         sys.stdout.flush()
         time.sleep(1)
         duration -= 1
-    sys.stdout.write("\rCountdown selesai. Melanjutkan proses...   \n")  # Bersihkan setelah timer selesai
+    sys.stdout.write("\rCountdown selesai. Melanjutkan proses...            \n")  # Tambahkan spasi lebih banyak di sini
     sys.stdout.flush()
 
 # Fungsi untuk menginisialisasi session requests dengan logika retry
