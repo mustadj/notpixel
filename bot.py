@@ -238,7 +238,7 @@ def main(account):
                 except IndexError:
                     log_message(f"IndexError pada pos_image: {pos_image}, y: {y}, x: {x}", Fore.RED)
 
-                except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException as e:
             log_message(f"Kesalahan jaringan di akun: {e}", Fore.RED)
 
 # Fungsi untuk menampilkan timer mundur
