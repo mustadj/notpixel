@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import random
+import urllib.parse  # Untuk decode URL
 from setproctitle import setproctitle
 from getimage import get
 from colorama import Fore, Style, init
@@ -32,9 +33,6 @@ def log_message(message, color=Style.RESET_ALL):
 def login_with_userid(userid):
     log_message(f"Login menggunakan userid: {userid}", Fore.YELLOW)
     try:
-        # Debug isi dari userid sebelum melakukan request
-        log_message(f"Debug userid yang dikirim: {userid}", Fore.CYAN)
-
         # Lakukan login dengan mengirim data sebagai JSON
         response = requests.post(f"{url}/login", json={"userid": userid}, timeout=10)
 
@@ -70,12 +68,13 @@ def claim(headers):
     except requests.exceptions.RequestException as e:
         log_message(f"Gagal mengklaim sumber daya: {e}", Fore.RED)
 
-# Fungsi untuk memuat userid dari file data.txt
+# Fungsi untuk memuat userid dari file data.txt dan mendecode jika ter-encode
 def load_userid_from_file(filename):
     try:
         with open(filename, 'r') as file:
-            userid = file.readline().strip()
-        return userid
+            encoded_userid = file.readline().strip()  # Membaca userid yang mungkin ter-encode
+            decoded_userid = urllib.parse.unquote(encoded_userid)  # Decode URL-encoded userid
+            return decoded_userid
     except Exception as e:
         log_message(f"Error saat memuat userid dari {filename}: {e}", Fore.RED)
         return None
