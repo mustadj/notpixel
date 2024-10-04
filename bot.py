@@ -203,10 +203,19 @@ def load_accounts_from_file(filename):
         accounts = [line.strip() for line in file if line.strip()]
     return accounts
 
-# Fungsi utama untuk mengecek dan memperbarui queryid jika kadaluarsa
+# Fungsi untuk memuat queryid dari data.txt
+def load_queryid_from_file(filename="data.txt"):
+    try:
+        with open(filename, 'r') as file:
+            return file.read().strip()
+    except FileNotFoundError:
+        log_message("File data.txt tidak ditemukan. Pastikan file tersebut ada.", Fore.RED)
+        return None
+
+# Fungsi utama untuk login menggunakan queryid dari data.txt dan hanya melakukan login ulang jika kadaluarsa
 def main(account):
-    auth = load_session()
-    if not auth:  # Jika tidak ada queryid di session, login otomatis
+    auth = load_queryid_from_file()  # Ambil queryid dari file
+    if not auth:  # Jika tidak ada queryid di file, login otomatis
         auth = auto_login(account)
 
     headers = get_headers()
