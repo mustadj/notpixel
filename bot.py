@@ -48,6 +48,11 @@ def log_message(message, color=Style.RESET_ALL, newline=True):
         sys.stdout.write(f"\r{color}{message}{Style.RESET_ALL}")  # Tidak ada spasi di sini
     sys.stdout.flush()
 
+# Fungsi untuk memindahkan kursor ke posisi tertentu
+def move_cursor_to(row, col):
+    sys.stdout.write(f"\033[{row};{col}H")
+    sys.stdout.flush()
+
 # Fungsi untuk menampilkan timer tanpa bertumpuk dengan log dan membersihkan karakter setelah timer selesai
 def countdown_timer(duration):
     while duration > 0:
@@ -57,10 +62,8 @@ def countdown_timer(duration):
         sys.stdout.flush()
         time.sleep(1)
         duration -= 1
-    # Setelah timer selesai, pindahkan kursor ke baris baru
-    sys.stdout.write("\r" + " " * 50 + "\r")
-    sys.stdout.write("\n")  # Pindahkan kursor ke baris baru
-    sys.stdout.flush()
+    # Setelah timer selesai, pindahkan kursor ke posisi tertentu
+    move_cursor_to(7, 60)  # Pindahkan kursor ke baris 7 kolom 60 sesuai dengan petunjuk pada gambar Anda
 
 # Fungsi untuk menginisialisasi session requests dengan logika retry
 def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504)):
