@@ -155,8 +155,8 @@ def paint(canvas_pos, color, header):
     try:
         response = session.post(f"{url}/repaint/start", data=json.dumps(data), headers=header, timeout=10)
         if response.status_code == 400:
-            log_message("Painter: No charge available. Sleeping for 10 minutes.", Fore.RED)
-            countdown_timer(10 * 60)
+            log_message("Painter: No charge available. Sleeping for 60 minutes.", Fore.BLUE)
+            countdown_timer(60 * 60)
             log_message("Timer selesai. Melanjutkan eksekusi.", Fore.YELLOW)
             return False
         if response.status_code == 401:
