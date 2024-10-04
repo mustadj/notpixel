@@ -45,19 +45,20 @@ def log_message(message, color=Style.RESET_ALL, newline=True):
     if newline:
         sys.stdout.write(f"{color}{message}{Style.RESET_ALL}\n")
     else:
-        sys.stdout.write(f"\r{color}{message}{Style.RESET_ALL}")
+        sys.stdout.write(f"\r{color}{message}{Style.RESET_ALL}   ")  # Tambahkan spasi di akhir
     sys.stdout.flush()
 
-# Fungsi untuk menampilkan timer tanpa bertumpuk dengan log
+# Fungsi untuk menampilkan timer tanpa bertumpuk dengan log dan membersihkan karakter setelah timer selesai
 def countdown_timer(duration):
     while duration > 0:
         mins, secs = divmod(duration, 60)
         timer = f'{int(mins):02}:{int(secs):02}'
-        sys.stdout.write(f"\rTimer Mundur: {timer}  ")
+        sys.stdout.write(f"\rTimer Mundur: {timer}   ")  # Tambahkan spasi untuk memastikan output bersih
         sys.stdout.flush()
         time.sleep(1)
         duration -= 1
-    sys.stdout.write("\nCountdown selesai. Melanjutkan proses...\n")
+    sys.stdout.write("\rCountdown selesai. Melanjutkan proses...   \n")  # Bersihkan setelah timer selesai
+    sys.stdout.flush()
 
 # Fungsi untuk menginisialisasi session requests dengan logika retry
 def get_session_with_retries(retries=3, backoff_factor=0.3, status_forcelist=(500, 502, 504)):
